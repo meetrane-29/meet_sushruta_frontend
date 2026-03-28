@@ -101,7 +101,7 @@ const routes = [
       {
         path: 'doctor',
         name: 'DoctorDashboard',
-        component: () => import('@/views/dashboard/DoctorDashboard.vue'),
+        component: () => import('@/views/dashboard/DoctorDashboardV2.vue'),
         meta: { requiresAuth: true, role: 'doctor' }
       },
       {
