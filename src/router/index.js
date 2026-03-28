@@ -57,6 +57,12 @@ const routes = [
         meta: { requiresAuth: true, role: 'admin' }
       },
       {
+        path: 'appointments',
+        name: 'AdminAppointments',
+        component: () => import('@/views/dashboard/AdminAppointments.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: 'patients',
         name: 'PatientsList',
         component: () => import('@/views/dashboard/PatientsList.vue'),
@@ -66,6 +72,24 @@ const routes = [
         path: 'doctors',
         name: 'DoctorsManagement',
         component: () => import('@/views/dashboard/DoctorsManagement.vue'),
+        meta: { requiresAuth: true, role: 'admin' }
+      },
+      {
+        path: 'nurses',
+        name: 'NursesManagement',
+        component: () => import('@/views/dashboard/NursesManagement.vue'),
+        meta: { requiresAuth: true, role: 'admin' }
+      },
+      {
+        path: 'pharmacy-staff',
+        name: 'PharmacyStaffManagement',
+        component: () => import('@/views/dashboard/PharmacyStaffManagement.vue'),
+        meta: { requiresAuth: true, role: 'admin' }
+      },
+      {
+        path: 'lab-staff',
+        name: 'LabStaffManagement',
+        component: () => import('@/views/dashboard/LabStaffManagement.vue'),
         meta: { requiresAuth: true, role: 'admin' }
       },
       {

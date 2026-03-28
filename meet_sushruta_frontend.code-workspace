@@ -1,0 +1,26 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../meet_sushruta_backend"
+		}
+	],
+	"settings": {
+		"sqltools.connections": [
+			{
+				"ssh": "Disabled",
+				"previewLimit": 50,
+				"server": "localhost",
+				"port": 5432,
+				"driver": "PostgreSQL",
+				"name": "mysqlmeet",
+				"database": "sushruta",
+				"username": "postgres",
+				"password": "admin",
+				"connectionTimeout": 30
+			}
+		]
+	}
+}

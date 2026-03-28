@@ -43,11 +43,21 @@
 
     <!-- Vitals -->
     <div class="bg-white rounded-lg border border-gray-200 p-6">
-      <h2 class="text-xl font-bold text-gray-900 mb-4">Latest Vitals</h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-gray-900">Latest Vitals</h2>
+        <button
+          @click="loadData"
+          :disabled="loading"
+          class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition disabled:opacity-50"
+          title="Refresh vitals from server"
+        >
+          ↻ Refresh
+        </button>
+      </div>
       <div v-if="vitals" class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="border border-gray-200 rounded-lg p-4">
           <p class="text-sm text-gray-600">Temperature</p>
-          <p class="text-2xl font-bold text-gray-900 mt-1">{{ vitals.temperature }}°F</p>
+          <p class="text-2xl font-bold text-gray-900 mt-1">{{ vitals.temperature }}°C</p>
         </div>
         <div class="border border-gray-200 rounded-lg p-4">
           <p class="text-sm text-gray-600">BP</p>
@@ -61,6 +71,10 @@
           <p class="text-sm text-gray-600">SpO2</p>
           <p class="text-2xl font-bold text-gray-900 mt-1">{{ vitals.spO2 }}%</p>
         </div>
+      </div>
+      <div v-else class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+        <p class="text-blue-700 font-medium">No vitals recorded yet</p>
+        <p class="text-sm text-blue-600 mt-1">Vitals will appear here once recorded by the nurse</p>
       </div>
     </div>
 
@@ -166,7 +180,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
@@ -174,7 +188,6 @@ import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 
 const route = useRoute()
 const api = useApi()
-const appointmentId = route.params.appointmentId
 
 const appointment = ref({})
 const vitals = ref(null)
@@ -191,20 +204,96 @@ const newMedicine = ref({
   duration: ''
 })
 
+// Compute appointmentId from route params, watching for changes
+const appointmentId = computed(() => route.params.id || route.params.appointmentId)
+
+// Normalize vitals field names from snake_case (API) to camelCase (Vue)
+const normalizeVitals = (rawVitals) => {
+  if (!rawVitals) return null
+  return {
+    temperature: rawVitals.temperature,
+    bloodPressure: rawVitals.blood_pressure,
+    heartRate: rawVitals.heart_rate,
+    spO2: rawVitals.oxygen, // SpO2 is stored as 'oxygen' in the table
+    respiratoryRate: rawVitals.respiratory_rate,
+    weight: rawVitals.weight,
+    height: rawVitals.height,
+    bloodSugar: rawVitals.blood_sugar,
+    recordedAt: rawVitals.recorded_at,
+    recordedBy: rawVitals.recorded_by,
+    id: rawVitals.id
+  }
+}
+
 const loadData = async () => {
+  if (!appointmentId.value) {
+    error.value = 'No appointment ID provided in route'
+    console.warn('[ConsultationView] No appointment ID in route');
+    return
+  }
+  
   loading.value = true
   error.value = null
   try {
-    const [appointmentRes, vitalsRes] = await Promise.all([
-      api.get(`/appointment/${appointmentId}`),
-      api.get(`/appointment/${appointmentId}/vitals`)
-    ])
-
+    console.log('[ConsultationView] Fetching appointment:', appointmentId.value)
+    
+    // Fetch appointment data
+    const appointmentRes = await api.get(`/appointments/${appointmentId.value}`)
     appointment.value = appointmentRes.data.data || {}
-    vitals.value = vitalsRes.data.data || null
+    
+    console.log('[ConsultationView] Appointment loaded:', {
+      id: appointment.value.id,
+      patientId: appointment.value.patient_id,
+      patientName: appointment.value.patient?.name,
+      hasPatientId: !!appointment.value.patient_id
+    })
+
+    // If appointment has patient info, fetch vitals for that patient
+    if (appointment.value.patient_id) {
+      try {
+        console.log('[ConsultationView] Fetching vitals for patient:', appointment.value.patient_id)
+        
+        const vitalsRes = await api.get(`/patients/${appointment.value.patient_id}/vitals`)
+        const vitalsData = vitalsRes.data.data
+        
+        console.log('[ConsultationView] Vitals response received:', {
+          isArray: Array.isArray(vitalsData),
+          length: Array.isArray(vitalsData) ? vitalsData.length : 'not-array',
+          data: vitalsData
+        })
+        
+        // If vitalsData is an array, get the most recent one
+        if (Array.isArray(vitalsData) && vitalsData.length > 0) {
+          console.log('[ConsultationView] Using latest vitals (index 0):', vitalsData[0])
+          vitals.value = normalizeVitals(vitalsData[0])
+          console.log('[ConsultationView] Normalized vitals:', vitals.value)
+        } else if (vitalsData && typeof vitalsData === 'object' && !Array.isArray(vitalsData)) {
+          console.log('[ConsultationView] Vitals is single object, normalizing:', vitalsData)
+          vitals.value = normalizeVitals(vitalsData)
+        } else {
+          console.log('[ConsultationView] No vitals data available')
+          vitals.value = null
+        }
+      } catch (vitalsErr) {
+        // Vitals endpoint might fail gracefully, log but don't fail whole view
+        console.warn('[ConsultationView] Vitals fetch failed:', {
+          status: vitalsErr.response?.status,
+          message: vitalsErr.message,
+          error: vitalsErr.response?.data
+        })
+        vitals.value = null
+      }
+    } else {
+      console.warn('[ConsultationView] No patient_id in appointment, skipping vitals fetch')
+      vitals.value = null
+    }
   } catch (err) {
     error.value = 'Failed to load consultation data. Please try again.'
-    console.error('Failed to load consultation data:', err)
+    console.error('[ConsultationView] Error loading data:', {
+      status: err.response?.status,
+      message: err.message,
+      data: err.response?.data
+    })
   } finally {
     loading.value = false
   }
@@ -225,7 +314,7 @@ const addPrescription = () => {
 const submitConsultation = async () => {
   isSubmitting.value = true
   try {
-    await api.post(`/appointment/${appointmentId}/consultation`, {
+    await api.post(`/appointments/${appointmentId.value}/consultation`, {
       notes: consultationNotes.value,
       prescriptions: prescriptions.value
     })
@@ -240,6 +329,11 @@ const submitConsultation = async () => {
     isSubmitting.value = false
   }
 }
+
+// Re-fetch when route params change
+watch(() => appointmentId.value, () => {
+  loadData()
+})
 
 onMounted(() => {
   loadData()

@@ -97,9 +97,9 @@
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="appointment in appointments" :key="appointment.id" class="hover:bg-gray-50 transition">
-            <td class="px-6 py-4 text-gray-900 font-medium">{{ appointment.patient?.name || 'Patient' }}</td>
-            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatDate(appointment.appointmentTime) }}</td>
-            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatTime(appointment.appointmentTime) }}</td>
+            <td class="px-6 py-4 text-gray-900 font-medium">{{ getPatientName(appointment) }}</td>
+            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatDate(appointment.appointment_date) }}</td>
+            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatTime(appointment.appointment_time) }}</td>
             <td class="px-6 py-4 text-gray-600 text-sm">{{ appointment.reason || 'No reason' }}</td>
             <td class="px-6 py-4">
               <StatusBadge :status="appointment.status" />
@@ -134,65 +134,71 @@ const prescriptions = ref([])
 const loading = ref(false)
 const error = ref('')
 
-const formatDate = (timeString) => {
-  if (!timeString) return '--'
+const formatDate = (dateString) => {
+  if (!dateString) return '--'
   try {
-    const date = new Date(timeString)
+    // Backend sends date as YYYY-MM-DD format
+    const date = new Date(dateString + 'T00:00:00')
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   } catch {
-    return timeString
+    return dateString
   }
 }
 
 const formatTime = (timeString) => {
   if (!timeString) return '--'
   try {
-    const date = new Date(timeString)
+    // Backend sends time as HH:MM format
+    const [hours, minutes] = timeString.split(':')
+    const date = new Date()
+    date.setHours(parseInt(hours), parseInt(minutes))
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   } catch {
     return timeString
   }
 }
 
+const getPatientName = (appointment) => {
+  if (!appointment?.patient?.user) return 'Patient'
+  const { first_name, last_name } = appointment.patient.user
+  return [first_name, last_name].filter(Boolean).join(' ')
+}
+
 const loadData = async () => {
   loading.value = true
   error.value = ''
   try {
-    const doctorId = authStore.userId || authStore.user?.id
+    // Fetch appointments - backend returns { appointments, total, page, limit }
+    const appointmentsRes = await api.get('/appointments')
+    const appointmentsData = appointmentsRes.data?.appointments || []
+    appointments.value = Array.isArray(appointmentsData) ? appointmentsData : []
 
-    if (!doctorId) {
-      error.value = 'Doctor information not available'
-      return
-    }
+    console.log('[DoctorDashboard] Loaded appointments:', appointments.value.length)
 
-    // Fetch appointments
-    try {
-      const appointmentsResponse = await api.get('/appointments', {
-        params: {
-          doctor_id: doctorId
-        }
-      })
-      appointments.value = appointmentsResponse.data.data || appointmentsResponse.data.appointments || []
-    } catch (err) {
-      console.error('Failed to load appointments:', err)
-      appointments.value = []
-    }
+    // Fetch prescriptions - backend returns { prescriptions, total, page, limit } or { data, total, page, limit }
+    const prescriptionsRes = await api.get('/prescriptions')
+    const prescriptionsData = prescriptionsRes.data?.prescriptions || prescriptionsRes.data?.data || []
+    prescriptions.value = Array.isArray(prescriptionsData) ? prescriptionsData : []
 
-    // Fetch prescriptions
-    try {
-      const prescriptionsResponse = await api.get('/prescriptions', {
-        params: {
-          doctor_id: doctorId
-        }
-      })
-      prescriptions.value = prescriptionsResponse.data.data || prescriptionsResponse.data.prescriptions || []
-    } catch (err) {
-      console.error('Failed to load prescriptions:', err)
-      prescriptions.value = []
-    }
+    console.log('[DoctorDashboard] Loaded prescriptions:', prescriptions.value.length)
   } catch (err) {
-    console.error('Failed to load doctor data:', err)
-    error.value = 'Failed to load data. Please try again.'
+    console.error('[DoctorDashboard] Error:', err)
+    console.error('[DoctorDashboard] Error response:', err.response?.data)
+
+    // Provide more specific error messages
+    if (err.response?.status === 401) {
+      error.value = 'Your session has expired. Please login again.'
+    } else if (err.response?.status === 403) {
+      error.value = 'You do not have permission to view this data.'
+    } else if (err.response?.status === 404) {
+      error.value = 'Your doctor record was not found. Please contact support.'
+    } else if (err.response?.status === 500) {
+      error.value = 'Server error. Please try again later.'
+    } else if (err.message === 'Network Error') {
+      error.value = 'Network error. Please check your connection and try again.'
+    } else {
+      error.value = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load data. Please try again.'
+    }
   } finally {
     loading.value = false
   }

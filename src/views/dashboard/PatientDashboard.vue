@@ -88,10 +88,10 @@
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="appointment in upcomingAppointments" :key="appointment.id" class="hover:bg-gray-50 transition">
-            <td class="px-6 py-4 text-gray-900 font-medium">{{ appointment.doctor?.name || 'Doctor' }}</td>
+            <td class="px-6 py-4 text-gray-900 font-medium">{{ getDoctorName(appointment) }}</td>
             <td class="px-6 py-4 text-gray-600 text-sm">{{ appointment.doctor?.specialization || '--' }}</td>
-            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatDate(appointment.appointmentTime) }}</td>
-            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatTime(appointment.appointmentTime) }}</td>
+            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatDate(appointment.appointment_date) }}</td>
+            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatTime(appointment.appointment_time) }}</td>
             <td class="px-6 py-4">
               <StatusBadge :status="appointment.status" />
             </td>
@@ -150,7 +150,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/authStore'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
@@ -169,24 +169,42 @@ const pendingTasks = computed(() => {
          prescriptions.value.filter(p => p.status === 'pending').length
 })
 
-const formatDate = (timeString) => {
-  if (!timeString) return '--'
+const formatDate = (dateString) => {
+  if (!dateString) return '--'
   try {
-    const date = new Date(timeString)
+    // Backend sends date as YYYY-MM-DD format
+    const date = new Date(dateString + 'T00:00:00')
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   } catch {
-    return timeString
+    return dateString
   }
 }
 
 const formatTime = (timeString) => {
   if (!timeString) return '--'
   try {
-    const date = new Date(timeString)
+    // Backend sends time as HH:MM format
+    const [hours, minutes] = timeString.split(':')
+    const date = new Date()
+    date.setHours(parseInt(hours), parseInt(minutes))
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   } catch {
     return timeString
   }
+}
+
+const getDoctorName = (appointment) => {
+  // Try different ways the doctor name might be stored
+  if (appointment?.doctor?.user?.first_name && appointment?.doctor?.user?.last_name) {
+    return [appointment.doctor.user.first_name, appointment.doctor.user.last_name].filter(Boolean).join(' ')
+  }
+  if (appointment?.doctor?.name) {
+    return appointment.doctor.name
+  }
+  if (appointment?.doctor?.user?.name) {
+    return appointment.doctor.user.name
+  }
+  return 'Doctor'
 }
 
 const refreshData = async () => {
@@ -194,16 +212,56 @@ const refreshData = async () => {
   error.value = ''
 
   try {
-    // Fetch appointments
+    // Fetch appointments - backend returns { success: true, data: { appointments, total, page, limit } }
     const appointmentsRes = await api.get('/appointments')
-    upcomingAppointments.value = appointmentsRes.data.data || []
+    
+    // Extract appointments from response - check both possible response structures
+    const appointmentsData = appointmentsRes.data?.data?.appointments || 
+                             appointmentsRes.data?.appointments || 
+                             []
+    upcomingAppointments.value = Array.isArray(appointmentsData) ? appointmentsData : []
 
-    // Fetch prescriptions
-    const prescriptionsRes = await api.get('/prescriptions')
-    prescriptions.value = prescriptionsRes.data.data || []
+    console.log('[PatientDashboard] Loaded appointments:', upcomingAppointments.value.length)
+    console.log('[PatientDashboard] Full response:', appointmentsRes.data)
+    if (upcomingAppointments.value.length > 0) {
+      console.log('[PatientDashboard] Sample appointment:', upcomingAppointments.value[0])
+    }
+
+    // Fetch prescriptions - use patient-specific endpoint
+    try {
+      const prescriptionsRes = await api.get(`/prescriptions/patient/${authStore.userId}`)
+      const prescriptionsData = prescriptionsRes.data?.data?.prescriptions || 
+                               prescriptionsRes.data?.prescriptions || 
+                               prescriptionsRes.data?.data || 
+                               []
+      prescriptions.value = Array.isArray(prescriptionsData) ? prescriptionsData : []
+      console.log('[PatientDashboard] Loaded prescriptions:', prescriptions.value.length)
+    } catch (prescErr) {
+      // If patient endpoint fails, log but don't fail the whole dashboard
+      console.warn('[PatientDashboard] Failed to load prescriptions:', prescErr)
+      prescriptions.value = []
+    }
   } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to load data. Please try again.'
-    console.error('Patient dashboard error:', err)
+    console.error('[PatientDashboard] Error:', err)
+    console.error('[PatientDashboard] Error response:', err.response?.data)
+    console.error('[PatientDashboard] Error status:', err.response?.status)
+    console.error('[PatientDashboard] Auth token:', authStore.accessToken ? 'Present' : 'Missing')
+    console.error('[PatientDashboard] Auth role:', authStore.role)
+
+    // Provide more specific error messages
+    if (err.response?.status === 401) {
+      error.value = 'Your session has expired. Please login again.'
+    } else if (err.response?.status === 403) {
+      error.value = 'You do not have permission to view this data.'
+    } else if (err.response?.status === 404) {
+      error.value = 'Your patient record was not found. Please contact support.'
+    } else if (err.response?.status === 500) {
+      error.value = 'Server error. Please try again later.'
+    } else if (err.message === 'Network Error') {
+      error.value = 'Network error. Please check your connection and try again.'
+    } else {
+      error.value = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load data. Please try again.'
+    }
   } finally {
     loading.value = false
   }
@@ -211,13 +269,30 @@ const refreshData = async () => {
 
 // Load data on component mount
 onMounted(() => {
+  // Ensure auth store is initialized from storage
+  authStore.initializeFromStorage()
+
   // Verify user is patient
-  if (authStore.role !== 'patient') {
-    error.value = 'Unauthorized: Patient access required'
+  if (!authStore.isLoggedIn) {
+    error.value = 'Not logged in. Please login first.'
     loading.value = false
     return
   }
 
+  if (authStore.role !== 'patient') {
+    error.value = `Unauthorized: Patient access required (Your role: ${authStore.role})`
+    loading.value = false
+    return
+  }
+
+  console.log('[PatientDashboard] Mounted - role:', authStore.role, '| userId:', authStore.userId)
   refreshData()
 })
+
+// Re-fetch when auth state changes
+watch(() => authStore.accessToken, () => {
+  if (authStore.accessToken) {
+    refreshData()
+  }
+}, { deep: true })
 </script>

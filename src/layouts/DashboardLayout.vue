@@ -78,8 +78,10 @@ const navItems = computed(() => {
       { label: 'Dashboard', to: '/dashboard/admin', icon: '📊' },
       { label: 'Patients', to: '/dashboard/patients', icon: '👥' },
       { label: 'Doctors', to: '/dashboard/doctors', icon: '👨‍⚕️' },
-      { label: 'Appointments', to: '/dashboard/appointments', icon: '📅' },
-      { label: 'Users', to: '/dashboard/users', icon: '👤' }
+      { label: 'Nurses', to: '/dashboard/nurses', icon: '👩‍⚕️' },
+      { label: 'Pharmacy Staff', to: '/dashboard/pharmacy-staff', icon: '💊' },
+      { label: 'Lab Staff', to: '/dashboard/lab-staff', icon: '🔬' },
+      { label: 'Appointments', to: '/dashboard/appointments', icon: '📅' }
     ],
     doctor: [
       { label: 'My Dashboard', to: '/dashboard/doctor', icon: '📊' },
