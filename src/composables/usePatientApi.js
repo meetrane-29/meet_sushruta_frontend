@@ -200,6 +200,53 @@ export function usePatientApi() {
     }
   }
 
+  /**
+   * Register a new patient (receptionist flow)
+   * Step 1: Create user+patient via auth/register with role=patient
+   * Step 2: Fetch the patient record by user_id to get patient.id
+   * @param {object} data - Patient data from registration form
+   * @returns {Promise} { data: patient } where patient.id is the patient UUID
+   */
+  const createPatient = async (data) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Register user with role=patient; backend auto-creates the patient record
+      const registerRes = await api.post('/auth/register', {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone: data.phone,
+        password: data.phone, // default password is phone number; patient can change later
+        role: 'patient',
+        date_of_birth: data.date_of_birth || '',
+        gender: data.gender || '',
+        blood_group: data.blood_group || '',
+        address: data.address || '',
+        emergency_contact_name: data.emergency_contact || '',
+        medical_history: data.medical_history || '',
+        allergies: data.allergies || '',
+      })
+
+      const userId = registerRes.data?.data?.user_id
+      if (!userId) throw new Error('Registration failed — no user ID returned')
+
+      // Search for the patient by email to get their patient record (avoids role issues)
+      const searchRes = await api.get('/patients', { params: { search: data.email, limit: 1 } })
+      const patients = searchRes.data?.data?.patients || searchRes.data?.patients || []
+      if (patients.length === 0) throw new Error('Patient registered but record not found')
+
+      return { data: patients[0] }
+    } catch (err) {
+      error.value = err.response?.data?.message || err.message || 'Failed to register patient'
+      console.error('[usePatientApi] createPatient error:', err)
+      throw new Error(error.value)
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     loading,
     error,
@@ -210,6 +257,7 @@ export function usePatientApi() {
     fetchPatientPrescriptions,
     updatePatient,
     deletePatient,
+    createPatient,
   }
 }
 

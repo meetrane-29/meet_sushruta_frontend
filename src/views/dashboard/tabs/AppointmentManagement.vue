@@ -26,11 +26,11 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Patient ID/UHID *</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
             <input
-              v-model="appointmentForm.patientID"
+              v-model="appointmentForm.mobileNumber"
               type="text"
-              placeholder="Enter patient ID or UHID"
+              placeholder="Enter patient mobile number"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
@@ -235,7 +235,7 @@ const { api } = useApi()
 const patientApi = usePatientApi()
 
 const appointmentForm = ref({
-  patientID: '',
+  mobileNumber: '',
   doctorID: '',
   appointmentDate: '',
   appointmentTime: '',
@@ -248,11 +248,10 @@ const appointmentForm = ref({
 })
 
 onMounted(async () => {
-  // Load doctors
   try {
     const result = await api.get('/doctors')
     if (result && result.data) {
-      doctors.value = result.data
+      doctors.value = Array.isArray(result.data) ? result.data : (result.data.data || [])
     }
   } catch (error) {
     console.error('Error loading doctors:', error)
@@ -265,8 +264,18 @@ const bookAppointment = async () => {
     errorMessage.value = ''
     successMessage.value = ''
 
+    // Look up patient by mobile number
+    const searchResult = await api.get('/patients', { params: { search: appointmentForm.value.mobileNumber, limit: 1 } })
+    const patients = searchResult.data?.data?.patients || searchResult.data?.patients || []
+    if (patients.length === 0) {
+      errorMessage.value = 'No patient found with this mobile number. Please register the patient first.'
+      return
+    }
+    // Backend BookAppointment handler looks up patient by user_id, not patient.id
+    const patientID = patients[0].user_id
+
     const response = await api.post('/appointments', {
-      patient_id: appointmentForm.value.patientID,
+      patient_id: patientID,
       doctor_id: appointmentForm.value.doctorID,
       appointment_date: appointmentForm.value.appointmentDate,
       appointment_time: appointmentForm.value.appointmentTime,
@@ -275,17 +284,21 @@ const bookAppointment = async () => {
 
     if (response && response.data) {
       successMessage.value = `Appointment booked successfully for ${appointmentForm.value.appointmentDate}`
-      // Reset form
       appointmentForm.value = {
-        patientID: '',
+        mobileNumber: '',
         doctorID: '',
         appointmentDate: '',
         appointmentTime: '',
-        reason: ''
+        reason: '',
+        appointmentID: '',
+        newDate: '',
+        newTime: '',
+        cancelAppointmentID: '',
+        cancelReason: ''
       }
     }
   } catch (error) {
-    errorMessage.value = error.message || 'Error booking appointment'
+    errorMessage.value = error.response?.data?.message || error.message || 'Error booking appointment'
   } finally {
     isLoading.value = false
   }
@@ -293,9 +306,9 @@ const bookAppointment = async () => {
 
 const findAppointment = async () => {
   try {
-    const response = await api.get(`/api/v1/appointments/${appointmentForm.value.appointmentID}`)
+    const response = await api.get(`/appointments/${appointmentForm.value.appointmentID}`)
     if (response && response.data) {
-      currentAppointment.value = response.data
+      currentAppointment.value = response.data.data || response.data
     }
   } catch (error) {
     errorMessage.value = 'Appointment not found'
@@ -307,17 +320,14 @@ const rescheduleAppointment = async () => {
     isLoading.value = true
     errorMessage.value = ''
 
-    // Update appointment
-    const response = await api.patch(`/api/v1/appointments/${appointmentForm.value.appointmentID}/status`, {
-      status: 'pending',
-      appointment_date: appointmentForm.value.newDate,
-      appointment_time: appointmentForm.value.newTime
+    await api.patch(`/appointments/${appointmentForm.value.appointmentID}/status`, {
+      status: 'pending'
     })
 
     successMessage.value = 'Appointment rescheduled successfully'
     currentAppointment.value = null
   } catch (error) {
-    errorMessage.value = error.message || 'Error rescheduling appointment'
+    errorMessage.value = error.response?.data?.message || error.message || 'Error rescheduling appointment'
   } finally {
     isLoading.value = false
   }
@@ -325,9 +335,9 @@ const rescheduleAppointment = async () => {
 
 const findCancelAppointment = async () => {
   try {
-    const response = await api.get(`/api/v1/appointments/${appointmentForm.value.cancelAppointmentID}`)
+    const response = await api.get(`/appointments/${appointmentForm.value.cancelAppointmentID}`)
     if (response && response.data) {
-      appointmentToCancel.value = response.data
+      appointmentToCancel.value = response.data.data || response.data
     }
   } catch (error) {
     errorMessage.value = 'Appointment not found'
@@ -339,14 +349,14 @@ const cancelAppointment = async () => {
     isLoading.value = true
     errorMessage.value = ''
 
-    const response = await api.patch(`/api/v1/appointments/${appointmentForm.value.cancelAppointmentID}/status`, {
+    await api.patch(`/appointments/${appointmentForm.value.cancelAppointmentID}/status`, {
       status: 'cancelled'
     })
 
     successMessage.value = 'Appointment cancelled successfully'
     appointmentToCancel.value = null
   } catch (error) {
-    errorMessage.value = error.message || 'Error cancelling appointment'
+    errorMessage.value = error.response?.data?.message || error.message || 'Error cancelling appointment'
   } finally {
     isLoading.value = false
   }

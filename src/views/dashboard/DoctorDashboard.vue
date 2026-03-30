@@ -245,12 +245,15 @@ const loadData = async () => {
   loading.value = true
   error.value = ''
   try {
-    // Fetch appointments
-    const appointmentsRes = await api.get('/appointments')
-    const appointmentsData = appointmentsRes.data?.appointments || []
+    // Fetch appointments - get doctor's own appointments from last 7 days to next 7 days
+    const appointmentsRes = await api.get('/appointments/my/schedule')
+    const appointmentsData = appointmentsRes.data?.data?.appointments || 
+                             appointmentsRes.data?.appointments || 
+                             []
     appointments.value = Array.isArray(appointmentsData) ? appointmentsData : []
 
     console.log('[DoctorDashboard] Loaded appointments:', appointments.value.length)
+    console.log('[DoctorDashboard] Full response:', appointmentsRes.data)
 
     // Fetch prescriptions
     const prescriptionsRes = await api.get('/prescriptions')

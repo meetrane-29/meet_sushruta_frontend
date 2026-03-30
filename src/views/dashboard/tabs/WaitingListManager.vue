@@ -11,9 +11,9 @@
           @change="loadWaitingList"
           class="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
         >
-          <option value="">Choose a doctor</option>
+          <option value="">{{ doctors.length === 0 ? 'No doctors available' : 'Choose a doctor' }}</option>
           <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
-            {{ doctor.user?.first_name }} {{ doctor.user?.last_name }} ({{ doctor.specialization }})
+            Dr. {{ doctor.user?.first_name }} {{ doctor.user?.last_name }} — {{ doctor.specialization }}
           </option>
         </select>
       </div>
@@ -223,10 +223,12 @@ onMounted(async () => {
   try {
     const result = await api.get('/doctors')
     if (result && result.data) {
-      doctors.value = result.data
+      // API returns { success: true, data: [...] }
+      doctors.value = Array.isArray(result.data) ? result.data : (result.data.data || [])
     }
   } catch (error) {
     console.error('Error loading doctors:', error)
+    doctors.value = []
   }
 })
 
@@ -237,7 +239,7 @@ const loadWaitingList = async () => {
 
     const result = await opdApi.getDoctorWaitingList(selectedDoctorID.value)
     if (result && result.data) {
-      waitingList.value = result.data.waiting_list || []
+      waitingList.value = result.data.data?.waiting_list || []
     }
 
     // Get estimated wait time
