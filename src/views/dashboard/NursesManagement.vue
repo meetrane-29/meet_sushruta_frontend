@@ -29,100 +29,78 @@
     <!-- Error State -->
     <ErrorMessage v-if="error && !loading" :message="error" @retry="refreshData" />
 
-    <!-- Search and Filter -->
-    <div v-if="!loading && !error" class="flex flex-col md:flex-row gap-4">
+    <!-- Search -->
+    <div v-if="!loading && !error" class="flex gap-4">
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="Search by name, department, or license..."
+        placeholder="Search by name or email..."
         class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
-      <select
-        v-model="selectedDepartment"
-        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">All Departments</option>
-        <option v-for="dept in departments" :key="dept" :value="dept">
-          {{ dept }}
-        </option>
-      </select>
-      <select
-        v-model="selectedShift"
-        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">All Shifts</option>
-        <option value="morning">Morning</option>
-        <option value="evening">Evening</option>
-        <option value="night">Night</option>
-      </select>
     </div>
 
-    <!-- Nurses Grid -->
-    <div v-if="!loading && !error" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div
-        v-for="nurse in filteredNurses"
-        :key="nurse.id"
-        class="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition"
-      >
-        <!-- Nurse Avatar -->
-        <div class="h-40 bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-5xl">
-          👩‍⚕️
-        </div>
-
-        <!-- Nurse Info -->
-        <div class="p-6">
-          <h3 class="text-xl font-semibold text-gray-900">{{ nurse.user?.first_name }} {{ nurse.user?.last_name }}</h3>
-          <p class="text-pink-600 font-medium mt-1">{{ nurse.license_number }}</p>
-          <p class="text-sm text-gray-600 mt-2">{{ nurse.department || 'General' }}</p>
-          
-          <!-- Shift Info -->
-          <div class="mt-3 pt-3 border-t border-gray-200">
-            <p class="text-sm text-gray-600">Shift</p>
-            <p class="text-lg font-semibold text-gray-900 capitalize">{{ nurse.shift || '--' }}</p>
-          </div>
-
-          <!-- Employment & Attendance -->
-          <div class="mt-3 space-y-1 text-sm">
-            <p class="text-gray-700"><span class="font-medium">Joining Date:</span> {{ formatDate(nurse.joining_date || nurse.created_at || nurse.user?.created_at) }}</p>
-            <p class="text-gray-700"><span class="font-medium">Salary:</span> {{ formatCurrency(nurse.salary || nurse.monthly_salary || nurse.user?.salary) }}</p>
-            <p class="text-gray-700"><span class="font-medium">Shift Timings:</span> {{ formatShift(nurse.shift_timing || nurse.shift || nurse.shift_timings) }}</p>
-            <p class="text-gray-700"><span class="font-medium">Attendance:</span> {{ formatAttendance(nurse.attendance_percentage || nurse.attendance_rate || nurse.attendance) }}</p>
-            <p class="text-gray-700"><span class="font-medium">Leave Records:</span> {{ formatLeaveRecords(nurse.leave_records || nurse.leaves || nurse.leave_count || nurse.leave_balance) }}</p>
-          </div>
-
-          <!-- Status Badge -->
-          <div class="mt-4">
-            <span
-              :class="{
-                'bg-green-100 text-green-800': nurse.user?.active,
-                'bg-gray-100 text-gray-800': !nurse.user?.active
-              }"
-              class="px-3 py-1 rounded-full text-sm font-medium"
-            >
-              {{ nurse.user?.active ? 'Active' : 'Inactive' }}
-            </span>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="mt-4 flex gap-2">
-            <button
-              @click="viewNurseDetails(nurse)"
-              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm"
-            >
-              View Details
-            </button>
-            <button
-              @click="deleteNurse(nurse.id)"
-              class="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition font-medium text-sm"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+    <!-- Nurses Table -->
+    <div v-if="!loading && !error" class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <table class="w-full">
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-200">
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Phone</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Department</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="nurse in filteredNurses"
+            :key="nurse.id"
+            class="border-b border-gray-200 hover:bg-gray-50 transition"
+          >
+            <td class="px-6 py-4 text-sm font-medium text-gray-900">
+              {{ nurse.user?.first_name }} {{ nurse.user?.last_name }}
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600">
+              {{ nurse.user?.phone || '--' }}
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600">
+              {{ nurse.user?.email || '--' }}
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600">
+              {{ nurse.department || 'General' }}
+            </td>
+            <td class="px-6 py-4 text-sm">
+              <span
+                :class="{
+                  'bg-green-100 text-green-800': nurse.user?.active,
+                  'bg-gray-100 text-gray-800': !nurse.user?.active
+                }"
+                class="px-3 py-1 rounded-full text-xs font-medium"
+              >
+                {{ nurse.user?.active ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm space-x-2">
+              <button
+                @click="viewNurseDetails(nurse)"
+                class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium"
+              >
+                View
+              </button>
+              <button
+                @click="deleteNurse(nurse.id)"
+                class="px-3 py-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition text-xs font-medium"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
       <!-- No Results -->
-      <div v-if="filteredNurses.length === 0" class="col-span-full py-12 text-center text-gray-600">
+      <div v-if="filteredNurses.length === 0" class="py-12 text-center text-gray-600">
         <p class="text-lg">No nurses found</p>
       </div>
     </div>
@@ -469,8 +447,6 @@ const nurses = ref([])
 const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
-const selectedDepartment = ref('')
-const selectedShift = ref('')
 const showModal = ref(false)
 const selectedNurse = ref(null)
 const showRegisterNurseModal = ref(false)
@@ -498,28 +474,14 @@ const editForm = ref({
   leave_balance: 0
 })
 
-const departments = computed(() => {
-  const depts = new Set()
-  nurses.value.forEach(nurse => {
-    if (nurse.department) {
-      depts.add(nurse.department)
-    }
-  })
-  return Array.from(depts).sort()
-})
-
+// Computed: Filter nurses by name and email
 const filteredNurses = computed(() => {
   return nurses.value.filter(nurse => {
-    const name = `${nurse.user?.first_name || ''} ${nurse.user?.last_name || ''}`.toLowerCase()
-    const dept = (nurse.department || '').toLowerCase()
-    const license = (nurse.license_number || '').toLowerCase()
+    const fullName = `${nurse.user?.first_name || ''} ${nurse.user?.last_name || ''}`.toLowerCase()
+    const email = (nurse.user?.email || '').toLowerCase()
     const search = searchQuery.value.toLowerCase()
 
-    const matchesSearch = name.includes(search) || dept.includes(search) || license.includes(search)
-    const matchesDept = !selectedDepartment.value || nurse.department === selectedDepartment.value
-    const matchesShift = !selectedShift.value || nurse.shift === selectedShift.value
-
-    return matchesSearch && matchesDept && matchesShift
+    return fullName.includes(search) || email.includes(search)
   })
 })
 
@@ -528,7 +490,13 @@ const activeNurses = computed(() => {
 })
 
 const uniqueDepartments = computed(() => {
-  return departments.value.length
+  const depts = new Set()
+  nurses.value.forEach(nurse => {
+    if (nurse.department) {
+      depts.add(nurse.department)
+    }
+  })
+  return depts.size
 })
 
 const uniqueShifts = computed(() => {
@@ -588,6 +556,7 @@ const formatLeaveRecords = (value) => {
   return String(value)
 }
 
+// Fetch nurses from API
 const refreshData = async () => {
   loading.value = true
   error.value = ''
@@ -718,6 +687,19 @@ const registerNurse = async () => {
     const firstName = nameParts[0]
     const lastName = nameParts.slice(1).join(' ') || firstName
 
+    // Step 1: Create user account first
+    const userPayload = {
+      first_name: firstName,
+      last_name: lastName,
+      email: nurseForm.value.email.trim().toLowerCase(),
+      password: nurseForm.value.password,
+      phone: nurseForm.value.phone.trim(),
+      role: 'nurse'
+    }
+    
+    const userResponse = await api.post('/admin-register', userPayload)
+    const userId = userResponse.data.data.id
+    
     // Convert joining_date string to Unix timestamp
     let joining_date_timestamp = 0
     if (nurseForm.value.joining_date) {
@@ -725,19 +707,16 @@ const registerNurse = async () => {
       joining_date_timestamp = Math.floor(date.getTime() / 1000)
     }
 
-    const payload = {
-      first_name: firstName,
-      last_name: lastName,
-      email: nurseForm.value.email.trim().toLowerCase(),
-      password: nurseForm.value.password,
-      phone: nurseForm.value.phone.trim(),
+    // Step 2: Create nurse record with nursing-specific fields
+    const nursePayload = {
+      user_id: userId,
       license_number: nurseForm.value.licenseNumber.trim(),
       department: nurseForm.value.department?.trim() || '',
       shift: nurseForm.value.shift,
       joining_date: joining_date_timestamp
     }
     
-    const response = await api.post('/admin/nurses/register', payload)
+    const response = await api.post('/nurses', nursePayload)
     
     // Success! Close modal and refresh data
     showRegisterNurseModal.value = false
@@ -775,6 +754,7 @@ const resetNurseForm = () => {
   nurseFormError.value = ''
 }
 
+// Load nurses on component mount
 onMounted(() => {
   refreshData()
 })

@@ -29,110 +29,70 @@
     <!-- Error State -->
     <ErrorMessage v-if="error && !loading" :message="error" @retry="refreshData" />
 
-    <!-- Search and Filter -->
-    <div v-if="!loading && !error" class="flex flex-col md:flex-row gap-4">
+    <!-- Search Box -->
+    <div v-if="!loading && !error" class="flex gap-4">
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="Search by name or specialization..."
+        placeholder="Search by name or email..."
         class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
-      <select
-        v-model="selectedSpecialization"
-        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">All Specializations</option>
-        <option v-for="spec in specializations" :key="spec" :value="spec">
-          {{ spec }}
-        </option>
-      </select>
-      <!-- Debug info -->
-      <div v-if="doctors.length > 0" class="text-xs text-gray-500 ml-2 py-2">
-        Showing {{ filteredDoctors.length }} of {{ doctors.length }} doctors
+      <div v-if="doctors.length > 0" class="text-sm text-gray-600 py-2 whitespace-nowrap">
+        Showing {{ filteredDoctors.length }} of {{ doctors.length }}
       </div>
     </div>
 
-    <!-- Doctors Grid -->
-    <div v-if="!loading && !error" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <template v-if="filteredDoctors.length > 0">
-        <div
-          v-for="(doctor, index) in filteredDoctors"
-          :key="doctor.id || index"
-          class="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition"
-        >
-          <!-- Doctor Avatar -->
-          <div class="h-40 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-5xl">
-            👨‍⚕️
-          </div>
-
-          <!-- Doctor Info -->
-          <div class="p-6">
-            <h3 class="text-xl font-semibold text-gray-900">
-              {{ doctor.user?.first_name ? `${doctor.user.first_name} ${doctor.user.last_name || ''}`.trim() : 'Unknown Doctor' }}
-            </h3>
-            <p class="text-blue-600 font-medium mt-1">{{ doctor.specialization || 'Uncategorized' }}</p>
-            <p class="text-sm text-gray-600 mt-2">{{ doctor.department || 'General' }}</p>
-          
-            <!-- Consultation Fee -->
-            <div class="mt-3 pt-3 border-t border-gray-200">
-              <p class="text-sm text-gray-600">Consultation Fee</p>
-              <p class="text-lg font-semibold text-gray-900">₹{{ doctor.consultation_fee || '--' }}</p>
-            </div>
-
-            <!-- Employment & Attendance -->
-            <div class="mt-3 space-y-1 text-sm">
-              <p class="text-gray-700"><span class="font-medium">Joining Date:</span> {{ formatDate(doctor.joining_date || doctor.created_at || doctor.user?.created_at) }}</p>
-              <p class="text-gray-700"><span class="font-medium">Salary:</span> {{ formatCurrency(doctor.salary || doctor.monthly_salary || doctor.user?.salary) }}</p>
-              <p class="text-gray-700"><span class="font-medium">Shift Timings:</span> {{ formatShift(doctor.shift_timing || doctor.shift || doctor.shift_timings) }}</p>
-              <p class="text-gray-700"><span class="font-medium">Attendance:</span> {{ formatAttendance(doctor.attendance_percentage || doctor.attendance_rate || doctor.attendance) }}</p>
-              <p class="text-gray-700"><span class="font-medium">Leave Records:</span> {{ formatLeaveRecords(doctor.leave_records || doctor.leaves || doctor.leave_count || doctor.leave_balance) }}</p>
-            </div>
-
-            <!-- Status Badge -->
-            <div class="mt-4">
-              <span
-                :class="{
-                  'bg-green-100 text-green-800': doctor.user?.active,
-                  'bg-gray-100 text-gray-800': !doctor.user?.active
-                }"
-                class="px-3 py-1 rounded-full text-sm font-medium"
-              >
-                {{ doctor.user?.active ? 'Active' : 'Inactive' }}
-              </span>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="mt-4 flex gap-2">
-              <button
-                @click="viewDoctorDetails(doctor)"
-                class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm"
-              >
-                View Details
-              </button>
-            </div>
-          </div>
-        </div>
-      </template>
+    <!-- Doctors Table -->
+    <div v-if="!loading && !error" class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div v-if="filteredDoctors.length > 0" class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200">
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Specialization</th>
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Phone</th>
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
+              <th class="px-6 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(doctor, index) in filteredDoctors"
+              :key="doctor.id || index"
+              class="border-b border-gray-200 hover:bg-gray-50 transition cursor-pointer"
+              @click="viewDoctorDetails(doctor)"
+            >
+              <td class="px-6 py-4 text-sm text-gray-900 font-medium">
+                {{ doctor.user?.first_name ? `${doctor.user.first_name} ${doctor.user.last_name || ''}`.trim() : 'Unknown' }}
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-700">
+                {{ doctor.specialization || '--' }}
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-700">
+                {{ doctor.user?.phone || '--' }}
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-700">
+                {{ doctor.user?.email || '--' }}
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span
+                  :class="{
+                    'bg-green-100 text-green-800': doctor.user?.active,
+                    'bg-gray-100 text-gray-800': !doctor.user?.active
+                  }"
+                  class="px-2 py-1 rounded-full text-xs font-medium"
+                >
+                  {{ doctor.user?.active ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <!-- No Results -->
-      <div v-if="filteredDoctors.length === 0" class="col-span-full py-12 text-center text-gray-600">
+      <div v-if="filteredDoctors.length === 0" class="py-12 text-center text-gray-600">
         <p class="text-lg">No doctors found</p>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    <div v-if="!loading && !error && doctors.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-      <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <p class="text-gray-600 text-sm">Total Doctors</p>
-        <p class="text-3xl font-bold text-gray-900 mt-2">{{ doctors.length }}</p>
-      </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <p class="text-gray-600 text-sm">Active Doctors</p>
-        <p class="text-3xl font-bold text-green-600 mt-2">{{ activeDoctors }}</p>
-      </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <p class="text-gray-600 text-sm">Specializations</p>
-        <p class="text-3xl font-bold text-blue-600 mt-2">{{ uniqueSpecializations }}</p>
       </div>
     </div>
 
@@ -229,13 +189,20 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Specialization *</label>
-              <input
+              <select
                 v-model="doctorForm.specialization"
-                type="text"
-                placeholder="e.g., Cardiology, Surgery"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
-              />
+              >
+                <option value="">-- Select Specialization --</option>
+                <option
+                  v-for="specialty in specialties"
+                  :key="specialty.id"
+                  :value="specialty.name"
+                >
+                  {{ specialty.name }}
+                </option>
+              </select>
               <p v-if="doctorErrors.specialization" class="text-red-500 text-xs mt-1">{{ doctorErrors.specialization }}</p>
             </div>
 
@@ -338,11 +305,15 @@ import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import DoctorDetailsModal from '@/components/shared/DoctorDetailsModal.vue'
 
 const api = useApi()
+
+// Core data
 const doctors = ref([])
+const searchQuery = ref('')
 const loading = ref(false)
 const error = ref('')
-const searchQuery = ref('')
-const selectedSpecialization = ref('')
+const specialties = ref([])
+
+// Modal states
 const showModal = ref(false)
 const selectedDoctor = ref(null)
 const showRegisterDoctorModal = ref(false)
@@ -350,6 +321,8 @@ const registering = ref(false)
 const doctorFormError = ref('')
 const doctorCurrentStep = ref(1)
 const doctorErrors = ref({})
+
+// Doctor registration form
 const doctorForm = ref({
   name: '',
   email: '',
@@ -362,102 +335,28 @@ const doctorForm = ref({
   joining_date: ''
 })
 
-const specializations = computed(() => {
-  const specs = new Set()
-  doctors.value.forEach(doc => {
-    if (doc.specialization) {
-      specs.add(doc.specialization)
-    }
-  })
-  return Array.from(specs).sort()
-})
-
+// Filter doctors by name or email
 const filteredDoctors = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
-  const spec = selectedSpecialization.value
+  
+  if (!query) {
+    return doctors.value
+  }
   
   return doctors.value.filter(doc => {
-    // If no filters applied, show all
-    if (!query && !spec) {
-      return true
-    }
+    const fullName = `${doc.user?.first_name || ''} ${doc.user?.last_name || ''}`.toLowerCase()
+    const email = (doc.user?.email || '').toLowerCase()
     
-    const doctorName = `${doc.user?.first_name || ''} ${doc.user?.last_name || ''}`.toLowerCase()
-    const doctorSpec = (doc.specialization || '').toLowerCase()
-    const doctorDept = (doc.department || '').toLowerCase()
-    
-    let matchesSearch = true
-    let matchesSpec = true
-    
-    // Check search
-    if (query) {
-      matchesSearch = doctorName.includes(query) || doctorSpec.includes(query) || doctorDept.includes(query) || doc.specialization === query
-    }
-    
-    // Check specialization filter
-    if (spec) {
-      matchesSpec = doc.specialization === spec
-    }
-    
-    return matchesSearch && matchesSpec
+    return fullName.includes(query) || email.includes(query)
   })
 })
 
+// Count active doctors
 const activeDoctors = computed(() => {
   return doctors.value.filter(doc => doc.user?.active).length
 })
 
-const uniqueSpecializations = computed(() => {
-  return specializations.value.length
-})
-
-const formatDate = (timestamp) => {
-  if (!timestamp) return 'Not set'
-
-  const date = new Date(Number(timestamp))
-  if (Number.isNaN(date.getTime())) return 'Not set'
-
-  return date.toLocaleDateString('en-IN', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit'
-  })
-}
-
-const formatCurrency = (value) => {
-  const numeric = Number(value)
-  if (!value || Number.isNaN(numeric)) return 'Not set'
-
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0
-  }).format(numeric)
-}
-
-const formatShift = (value) => {
-  if (!value) return 'Not set'
-  return String(value).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-const formatAttendance = (value) => {
-  if (value === null || value === undefined || value === '') return 'Not set'
-
-  const numeric = Number(value)
-  if (!Number.isNaN(numeric)) {
-    return `${numeric}%`
-  }
-
-  return String(value)
-}
-
-const formatLeaveRecords = (value) => {
-  if (value === null || value === undefined || value === '') return 'Not set'
-  if (Array.isArray(value)) return `${value.length} record(s)`
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
-}
-
+// Fetch doctors from API
 const refreshData = async () => {
   loading.value = true
   error.value = ''
@@ -479,14 +378,10 @@ const refreshData = async () => {
     }
     
     console.log(`✓ Loaded ${data.length} doctors`)
-    
-    // Store doctors
     doctors.value = data
     
-    // Log first doctor details for debugging
     if (data.length > 0) {
       console.log('First doctor:', data[0])
-      console.log('Doctor user field:', data[0].user)
     }
     
   } catch (err) {
@@ -497,6 +392,7 @@ const refreshData = async () => {
   }
 }
 
+// Modal functions
 const viewDoctorDetails = (doctor) => {
   selectedDoctor.value = doctor
   showModal.value = true
@@ -518,14 +414,13 @@ const handleDoctorDeleted = (doctorId) => {
   doctors.value = doctors.value.filter(d => d.id !== doctorId)
 }
 
-// Validate doctor form step 1
+// Doctor registration validation
 const validateDoctorStep1 = () => {
   doctorErrors.value = {}
   
   if (!doctorForm.value.name.trim()) {
     doctorErrors.value.name = 'Name is required'
   } else {
-    // Split name into parts to validate individually
     const nameParts = doctorForm.value.name.trim().split(/\s+/)
     const firstName = nameParts[0]
     const lastName = nameParts.slice(1).join(' ') || firstName
@@ -542,11 +437,13 @@ const validateDoctorStep1 = () => {
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(doctorForm.value.email)) {
     doctorErrors.value.email = 'Invalid email format'
   }
+  
   if (!doctorForm.value.password) {
     doctorErrors.value.password = 'Password is required'
   } else if (doctorForm.value.password.length < 8) {
     doctorErrors.value.password = 'Password must be at least 8 characters'
   }
+  
   if (!doctorForm.value.phone.trim()) {
     doctorErrors.value.phone = 'Phone is required'
   }
@@ -554,7 +451,6 @@ const validateDoctorStep1 = () => {
   return Object.keys(doctorErrors.value).length === 0
 }
 
-// Validate doctor form step 2
 const validateDoctorStep2 = () => {
   doctorErrors.value = {}
   
@@ -594,7 +490,6 @@ const registerDoctor = async () => {
     const firstName = nameParts[0]
     const lastName = nameParts.slice(1).join(' ') || firstName
 
-    // Convert joining_date string to Unix timestamp
     let joining_date_timestamp = 0
     if (doctorForm.value.joining_date) {
       const date = new Date(doctorForm.value.joining_date)
@@ -635,7 +530,6 @@ const registerDoctor = async () => {
   }
 }
 
-// Reset doctor form
 const resetDoctorForm = () => {
   doctorForm.value = {
     name: '',
@@ -653,7 +547,19 @@ const resetDoctorForm = () => {
   doctorFormError.value = ''
 }
 
-onMounted(() => {
+// Load data on component mount
+onMounted(async () => {
+  // Fetch specialties directly from API
+  try {
+    const specRes = await api.get('/specializations')
+    // API returns { success: true, data: { specializations: [...], total, page, limit } }
+    specialties.value = specRes.data?.data?.specializations || specRes.data?.specializations || []
+    console.log('Loaded specializations:', specialties.value)
+  } catch (err) {
+    console.error('Failed to load specializations:', err)
+  }
+  
+  // Fetch doctors
   refreshData()
 })
 </script>

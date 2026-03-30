@@ -31,70 +31,57 @@
       />
     </div>
 
-    <!-- Staff Grid -->
-    <div v-if="!loading && !error" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div
-        v-for="staff in filteredStaff"
-        :key="staff.id"
-        class="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition"
-      >
-        <!-- Avatar -->
-        <div class="h-40 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-5xl">
-          🔬
-        </div>
-
-        <!-- Info -->
-        <div class="p-6">
-          <h3 class="text-xl font-semibold text-gray-900">{{ staff.first_name }} {{ staff.last_name }}</h3>
-          <p class="text-green-600 font-medium mt-1">{{ staff.email }}</p>
-          <p class="text-sm text-gray-600 mt-1">{{ staff.phone }}</p>
-
-          <!-- Employment & Attendance -->
-          <div class="mt-3 space-y-1 text-sm">
-            <p class="text-gray-700"><span class="font-medium">Joining Date:</span> {{ formatDate(staff.joining_date || staff.created_at) }}</p>
-            <p class="text-gray-700"><span class="font-medium">Salary:</span> {{ formatCurrency(staff.salary || staff.monthly_salary) }}</p>
-            <p class="text-gray-700"><span class="font-medium">Shift Timings:</span> {{ formatShift(staff.shift_timing || staff.shift || staff.shift_timings) }}</p>
-            <p class="text-gray-700"><span class="font-medium">Attendance:</span> {{ formatAttendance(staff.attendance_percentage || staff.attendance_rate || staff.attendance) }}</p>
-            <p class="text-gray-700"><span class="font-medium">Leave Records:</span> {{ formatLeaveRecords(staff.leave_records || staff.leaves || staff.leave_count || staff.leave_balance) }}</p>
-          </div>
-          
-          <!-- Status Badge -->
-          <div class="mt-4">
-            <span
-              :class="{
-                'bg-green-100 text-green-800': staff.active,
-                'bg-gray-100 text-gray-800': !staff.active
-              }"
-              class="px-3 py-1 rounded-full text-sm font-medium"
-            >
-              {{ staff.active ? 'Active' : 'Inactive' }}
-            </span>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="mt-4 flex gap-2">
-            <button
-              @click="viewStaffDetails(staff)"
-              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm"
-            >
-              View
-            </button>
-            <button
-              @click="deleteStaff(staff.id)"
-              class="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition font-medium text-sm"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
+    <!-- Staff Table -->
+    <div v-if="!loading && !error" class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div v-if="filteredStaff.length > 0" class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Phone</th>
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
+              <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr v-for="member in filteredStaff" :key="member.id" class="hover:bg-gray-50">
+              <td class="px-6 py-4 text-sm text-gray-900">{{ member.first_name }} {{ member.last_name }}</td>
+              <td class="px-6 py-4 text-sm text-gray-600">{{ member.email }}</td>
+              <td class="px-6 py-4 text-sm text-gray-600">{{ member.phone }}</td>
+              <td class="px-6 py-4 text-sm">
+                <span
+                  :class="{
+                    'bg-green-100 text-green-800': member.active,
+                    'bg-gray-100 text-gray-800': !member.active
+                  }"
+                  class="px-3 py-1 rounded-full text-xs font-medium"
+                >
+                  {{ member.active ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-sm flex gap-2">
+                <button
+                  @click="viewStaffDetails(member)"
+                  class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs font-medium"
+                >
+                  View
+                </button>
+                <button
+                  @click="deleteStaff(member.id)"
+                  class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition text-xs font-medium"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-
-      <!-- No Results -->
-      <div v-if="filteredStaff.length === 0" class="col-span-full py-12 text-center text-gray-600">
+      <div v-else class="py-12 text-center text-gray-600">
         <p class="text-lg">No lab staff found</p>
       </div>
     </div>
-
     <!-- Stats -->
     <div v-if="!loading && !error && staff.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
       <div class="bg-white rounded-lg border border-gray-200 p-6">
@@ -219,6 +206,7 @@ const error = ref('')
 const searchQuery = ref('')
 const showModal = ref(false)
 const selectedStaff = ref(null)
+
 const editForm = ref({
   joining_date: 0,
   salary: 0,
@@ -226,83 +214,52 @@ const editForm = ref({
   leave_balance: 0
 })
 
+// Filter staff by name or email
 const filteredStaff = computed(() => {
-  return staff.value.filter(s => {
-    const name = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase()
-    const email = (s.email || '').toLowerCase()
-    const search = searchQuery.value.toLowerCase()
-    return name.includes(search) || email.includes(search)
+  return staff.value.filter(member => {
+    const fullName = `${member.first_name || ''} ${member.last_name || ''}`.toLowerCase()
+    const email = (member.email || '').toLowerCase()
+    const query = searchQuery.value.toLowerCase()
+    return fullName.includes(query) || email.includes(query)
   })
 })
 
+// Count active staff
 const activeStaff = computed(() => {
   return staff.value.filter(s => s.active).length
 })
 
-const formatDate = (timestamp) => {
-  if (!timestamp) return 'Not set'
-
-  const date = new Date(Number(timestamp))
-  if (Number.isNaN(date.getTime())) return 'Not set'
-
-  return date.toLocaleDateString('en-IN', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit'
-  })
-}
-
-const formatCurrency = (value) => {
-  const numeric = Number(value)
-  if (!value || Number.isNaN(numeric)) return 'Not set'
-
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0
-  }).format(numeric)
-}
-
-const formatShift = (value) => {
-  if (!value) return 'Not set'
-  return String(value).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-const formatAttendance = (value) => {
-  if (value === null || value === undefined || value === '') return 'Not set'
-
-  const numeric = Number(value)
-  if (!Number.isNaN(numeric)) {
-    return `${numeric}%`
-  }
-
-  return String(value)
-}
-
-const formatLeaveRecords = (value) => {
-  if (value === null || value === undefined || value === '') return 'Not set'
-  if (Array.isArray(value)) return `${value.length} record(s)`
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
-}
-
-const refreshData = async () => {
+// Fetch all lab staff
+const fetchLabStaff = async () => {
   loading.value = true
   error.value = ''
 
   try {
+    // Call API to get lab staff
     const response = await api.get('/users?role=lab')
-    // Extract array from nested data structure
-    const data = response.data.data?.data || response.data.data || response.data || []
+    
+    // Extract staff array from response
+    const data = response.data?.data || []
     staff.value = Array.isArray(data) ? data : []
   } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to load lab staff. Please try again.'
-    console.error('Staff fetch error:', err)
+    error.value = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to load lab staff. Please try again.'
+    console.error('Error fetching lab staff:', {
+      status: err.response?.status,
+      message: err.response?.data?.message,
+      error: err.response?.data?.error,
+      fullError: err
+    })
   } finally {
     loading.value = false
   }
 }
 
+// Refresh data
+const refreshData = () => {
+  fetchLabStaff()
+}
+
+// Delete staff member
 const deleteStaff = async (staffId) => {
   if (!confirm('Are you sure you want to delete this staff member?')) {
     return
@@ -318,6 +275,7 @@ const deleteStaff = async (staffId) => {
   }
 }
 
+// View staff details
 const viewStaffDetails = (member) => {
   selectedStaff.value = member
   editForm.value = {
@@ -329,11 +287,13 @@ const viewStaffDetails = (member) => {
   showModal.value = true
 }
 
+// Close modal
 const closeModal = () => {
   showModal.value = false
   selectedStaff.value = null
 }
 
+// Update staff information
 const updateStaff = async () => {
   if (!selectedStaff.value) return
 
@@ -341,7 +301,7 @@ const updateStaff = async () => {
     const response = await api.patch(`/users/${selectedStaff.value.id}`, editForm.value)
     const index = staff.value.findIndex(s => s.id === selectedStaff.value.id)
     if (index !== -1) {
-      staff.value[index] = response.data.data || response.data
+      staff.value[index] = response.data?.data || response.data
     }
     closeModal()
     error.value = ''
@@ -351,7 +311,8 @@ const updateStaff = async () => {
   }
 }
 
+// Load staff on component mount
 onMounted(() => {
-  refreshData()
+  fetchLabStaff()
 })
 </script>

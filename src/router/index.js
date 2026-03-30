@@ -29,6 +29,12 @@ const routes = [
     component: () => import('@/views/Register.vue')
   },
   {
+    path: '/admin-registration',
+    name: 'AdminRegistration',
+    component: () => import('@/views/AdminRegistration.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
     path: '/doctors',
     name: 'DoctorsDirectory',
     component: () => import('@/views/DoctorsDirectory.vue')
@@ -105,6 +111,12 @@ const routes = [
         meta: { requiresAuth: true, role: 'doctor' }
       },
       {
+        path: 'doctor/analytics',
+        name: 'DoctorAnalytics',
+        component: () => import('@/views/dashboard/DoctorAnalyticsDashboard.vue'),
+        meta: { requiresAuth: true, role: 'doctor' }
+      },
+      {
         path: 'doctor/consult/:appointmentId',
         name: 'ConsultationView',
         component: () => import('@/views/dashboard/ConsultationView.vue'),
@@ -123,10 +135,58 @@ const routes = [
         meta: { requiresAuth: true, role: 'pharmacy' }
       },
       {
+        path: 'pharmacy/medicines',
+        name: 'PharmacyInventory',
+        component: () => import('@/components/PharmacyInventory.vue'),
+        meta: { requiresAuth: true, role: 'pharmacy' }
+      },
+      {
+        path: 'pharmacy/stock',
+        name: 'StockManagement',
+        component: () => import('@/components/StockManagement.vue'),
+        meta: { requiresAuth: true, role: 'pharmacy' }
+      },
+      {
+        path: 'pharmacy/low-stock',
+        name: 'LowStockAlerts',
+        component: () => import('@/components/LowStockAlerts.vue'),
+        meta: { requiresAuth: true, role: 'pharmacy' }
+      },
+      {
+        path: 'pharmacy/expiring',
+        name: 'ExpiringMedicines',
+        component: () => import('@/components/ExpiringMedicines.vue'),
+        meta: { requiresAuth: true, role: 'pharmacy' }
+      },
+      {
+        path: 'pharmacy/dispensing',
+        name: 'MedicineDispensing',
+        component: () => import('@/components/MedicineDispensing.vue'),
+        meta: { requiresAuth: true, role: 'pharmacy' }
+      },
+      {
+        path: 'pharmacy/reports',
+        name: 'PharmacyReports',
+        component: () => import('@/components/PharmacyReports.vue'),
+        meta: { requiresAuth: true, role: 'pharmacy' }
+      },
+      {
+        path: 'reception',
+        name: 'ReceptionDashboard',
+        component: () => import('@/views/dashboard/ReceptionDashboard.vue'),
+        meta: { requiresAuth: true, role: 'receptionist' }
+      },
+      {
         path: 'lab',
         name: 'LabDashboard',
         component: () => import('@/views/dashboard/LabDashboard.vue'),
         meta: { requiresAuth: true, role: 'lab' }
+      },
+      {
+        path: 'notifications',
+        name: 'NotificationCenter',
+        component: () => import('@/views/dashboard/NotificationsCenter.vue'),
+        meta: { requiresAuth: true }
       }
     ]
   },

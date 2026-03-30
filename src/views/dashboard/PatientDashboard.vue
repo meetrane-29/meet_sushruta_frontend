@@ -67,12 +67,12 @@
 
       <div v-if="upcomingAppointments.length === 0" class="p-8 text-center text-gray-600">
         <p class="text-lg">No upcoming appointments</p>
-        <router-link
-          to="/"
+        <button
+          @click="scrollToBooking"
           class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
         >
           Book an Appointment
-        </router-link>
+        </button>
       </div>
 
       <table v-else class="w-full">
@@ -89,18 +89,28 @@
         <tbody class="divide-y divide-gray-200">
           <tr v-for="appointment in upcomingAppointments" :key="appointment.id" class="hover:bg-gray-50 transition">
             <td class="px-6 py-4 text-gray-900 font-medium">{{ getDoctorName(appointment) }}</td>
-            <td class="px-6 py-4 text-gray-600 text-sm">{{ appointment.doctor?.specialization || '--' }}</td>
+            <td class="px-6 py-4 text-gray-600 text-sm">
+              {{ appointment.doctor?.specialization?.name || appointment.doctor?.specialization || 'General' }}
+            </td>
             <td class="px-6 py-4 text-gray-600 text-sm">{{ formatDate(appointment.appointment_date) }}</td>
             <td class="px-6 py-4 text-gray-600 text-sm">{{ formatTime(appointment.appointment_time) }}</td>
             <td class="px-6 py-4">
               <StatusBadge :status="appointment.status" />
             </td>
-            <td class="px-6 py-4">
+            <td class="px-6 py-4 flex gap-2">
               <button
                 class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
                 disabled
               >
                 View Details
+              </button>
+              <button
+                v-if="appointment.status !== 'cancelled' && appointment.status !== 'completed'"
+                @click="cancelAppt(appointment.id)"
+                :disabled="cancelingId === appointment.id"
+                :class="['px-4 py-2 rounded-lg transition text-sm font-medium', cancelingId === appointment.id ? 'bg-gray-300 text-gray-500' : 'bg-red-100 text-red-700 hover:bg-red-200']"
+              >
+                {{ cancelingId === appointment.id ? '❌ Canceling...' : '❌ Cancel' }}
               </button>
             </td>
           </tr>
@@ -109,43 +119,16 @@
     </div>
 
     <!-- Prescriptions Section -->
-    <div v-if="!loading && !error" class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div class="border-b border-gray-200 p-6">
-        <h2 class="text-2xl font-bold text-gray-900">Your Prescriptions</h2>
-      </div>
+    <PastPrescriptions v-if="!loading && !error" />
 
-      <div v-if="prescriptions.length === 0" class="p-8 text-center text-gray-600">
-        <p class="text-lg">No prescriptions yet</p>
-      </div>
+    <!-- Lab Reports Section -->
+    <MyLabReports v-if="!loading && !error" />
 
-      <table v-else class="w-full">
-        <thead class="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Doctor</th>
-            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Date</th>
-            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Action</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-          <tr v-for="prescription in prescriptions" :key="prescription.id" class="hover:bg-gray-50 transition">
-            <td class="px-6 py-4 text-gray-900 font-medium">{{ prescription.doctor?.name || 'Doctor' }}</td>
-            <td class="px-6 py-4 text-gray-600 text-sm">{{ formatDate(prescription.createdAt) }}</td>
-            <td class="px-6 py-4">
-              <StatusBadge :status="prescription.status" />
-            </td>
-            <td class="px-6 py-4">
-              <button
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
-                disabled
-              >
-                View
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- Bills Section -->
+    <MyBills v-if="!loading && !error" />
+
+    <!-- Book Appointment Section -->
+    <BookAppointmentPanel ref="bookingPanel" v-if="!loading && !error" @appointment-booked="refreshData" />
   </div>
 </template>
 
@@ -156,6 +139,10 @@ import { useAuthStore } from '@/stores/authStore'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import BookAppointmentPanel from '@/components/BookAppointmentPanel.vue'
+import MyLabReports from '@/components/MyLabReports.vue'
+import PastPrescriptions from '@/components/PastPrescriptions.vue'
+import MyBills from '@/components/MyBills.vue'
 
 const api = useApi()
 const authStore = useAuthStore()
@@ -163,11 +150,32 @@ const upcomingAppointments = ref([])
 const prescriptions = ref([])
 const loading = ref(false)
 const error = ref('')
+const cancelingId = ref(null)
+const bookingPanel = ref(null)
+
+const scrollToBooking = () => {
+  if (bookingPanel.value) {
+    bookingPanel.value.$el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 
 const pendingTasks = computed(() => {
   return upcomingAppointments.value.filter(a => a.status === 'pending').length +
          prescriptions.value.filter(p => p.status === 'pending').length
 })
+
+const cancelAppt = async (id) => {
+  if (!confirm('Are you sure you want to cancel this appointment?')) return
+  cancelingId.value = id
+  try {
+    await api.put(`/appointments/${id}/cancel`)
+    upcomingAppointments.value = upcomingAppointments.value.filter(a => a.id !== id)
+  } catch (e) {
+    alert('Failed to cancel appointment: ' + (e.response?.data?.message || 'Try again'))
+  } finally {
+    cancelingId.value = null
+  }
+}
 
 const formatDate = (dateString) => {
   if (!dateString) return '--'
@@ -212,19 +220,35 @@ const refreshData = async () => {
   error.value = ''
 
   try {
-    // Fetch appointments - backend returns { success: true, data: { appointments, total, page, limit } }
-    const appointmentsRes = await api.get('/appointments')
-    
-    // Extract appointments from response - check both possible response structures
-    const appointmentsData = appointmentsRes.data?.data?.appointments || 
-                             appointmentsRes.data?.appointments || 
-                             []
-    upcomingAppointments.value = Array.isArray(appointmentsData) ? appointmentsData : []
+    // Initialize with empty arrays to prevent undefined errors
+    upcomingAppointments.value = []
+    prescriptions.value = []
 
-    console.log('[PatientDashboard] Loaded appointments:', upcomingAppointments.value.length)
-    console.log('[PatientDashboard] Full response:', appointmentsRes.data)
-    if (upcomingAppointments.value.length > 0) {
-      console.log('[PatientDashboard] Sample appointment:', upcomingAppointments.value[0])
+    // Fetch appointments - get FUTURE appointments only for this patient
+    try {
+      const authStore = useAuthStore()
+      const patientId = authStore.userId
+      
+      if (!patientId) {
+        throw new Error('Patient ID not found in auth store')
+      }
+      
+      console.log('[PatientDashboard] Fetching appointments for patient:', patientId)
+      const appointmentsRes = await api.get(`/patients/${patientId}/appointments?page=1&limit=50`)
+      
+      // Extract appointments from response
+      const appointmentsData = appointmentsRes.data?.data?.appointments || 
+                               appointmentsRes.data?.appointments || 
+                               []
+      upcomingAppointments.value = Array.isArray(appointmentsData) ? appointmentsData : []
+
+      console.log('[PatientDashboard] Loaded future appointments:', upcomingAppointments.value.length)
+      if (upcomingAppointments.value.length > 0) {
+        console.log('[PatientDashboard] Sample appointment:', upcomingAppointments.value[0])
+      }
+    } catch (appointErr) {
+      console.warn('[PatientDashboard] Failed to load appointments:', appointErr)
+      upcomingAppointments.value = []
     }
 
     // Fetch prescriptions - use patient-specific endpoint
@@ -245,8 +269,6 @@ const refreshData = async () => {
     console.error('[PatientDashboard] Error:', err)
     console.error('[PatientDashboard] Error response:', err.response?.data)
     console.error('[PatientDashboard] Error status:', err.response?.status)
-    console.error('[PatientDashboard] Auth token:', authStore.accessToken ? 'Present' : 'Missing')
-    console.error('[PatientDashboard] Auth role:', authStore.role)
 
     // Provide more specific error messages
     if (err.response?.status === 401) {
@@ -262,6 +284,10 @@ const refreshData = async () => {
     } else {
       error.value = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load data. Please try again.'
     }
+    
+    // Ensure arrays are initialized even on error
+    upcomingAppointments.value = []
+    prescriptions.value = []
   } finally {
     loading.value = false
   }

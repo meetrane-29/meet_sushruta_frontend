@@ -13,6 +13,12 @@ api.interceptors.request.use(
     if (authStore.accessToken) {
       config.headers.Authorization = `Bearer ${authStore.accessToken}`
     }
+    
+    // Log POST requests with data
+    if (config.method === 'post' || config.method === 'patch') {
+      console.log('[API Request]', config.method.toUpperCase(), config.url, 'Data:', config.data)
+    }
+    
     return config
   },
   (error) => Promise.reject(error)

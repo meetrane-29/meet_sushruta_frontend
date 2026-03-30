@@ -99,9 +99,13 @@ const navItems = computed(() => {
       { label: 'Vitals', to: '/dashboard/vitals', icon: '❤️' }
     ],
     pharmacy: [
-      { label: 'My Dashboard', to: '/dashboard/pharmacy', icon: '📊' },
-      { label: 'Prescriptions', to: '/dashboard/prescriptions', icon: '💊' },
-      { label: 'Dispense', to: '/dashboard/dispense', icon: '📦' }
+      { label: 'Dashboard', to: '/dashboard/pharmacy', icon: '📊' },
+      { label: 'Medicines', to: '/dashboard/pharmacy/medicines', icon: '💊' },
+      { label: 'Stock Management', to: '/dashboard/pharmacy/stock', icon: '📦' },
+      { label: 'Low Stock Alerts', to: '/dashboard/pharmacy/low-stock', icon: '⚠️' },
+      { label: 'Expiring Medicines', to: '/dashboard/pharmacy/expiring', icon: '⏰' },
+      { label: 'Dispensing', to: '/dashboard/pharmacy/dispensing', icon: '🩹' },
+      { label: 'Reports', to: '/dashboard/pharmacy/reports', icon: '📈' }
     ],
     lab: [
       { label: 'My Dashboard', to: '/dashboard/lab', icon: '📊' },

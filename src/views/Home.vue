@@ -55,7 +55,7 @@
               📞 Request a Callback
             </button>
             <router-link
-              to="/book/1"
+              to="/doctors"
               class="px-4 py-2 bg-rose-300 text-gray-800 rounded-lg font-medium hover:bg-rose-400 transition text-sm"
             >
               📅 Book Appointment
@@ -117,7 +117,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <!-- Book an Appointment Card -->
           <router-link
-            to="/book/1"
+            to="/doctors"
             class="bg-amber-50 hover:shadow-lg rounded-lg p-8 border border-amber-100 transition cursor-pointer"
           >
             <div class="text-5xl mb-4">📅</div>
@@ -260,7 +260,7 @@
         <h2 class="text-3xl font-bold mb-4">Ready to book an appointment?</h2>
         <p class="text-blue-100 mb-8">Start your journey to better health today</p>
         <router-link
-          to="/book/1"
+          to="/doctors"
           class="inline-block px-8 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition"
         >
           Book Now

@@ -86,66 +86,65 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref } from 'vue'
 import LoadingSpinner from '../../../components/shared/LoadingSpinner.vue'
 import ErrorMessage from '../../../components/shared/ErrorMessage.vue'
-import { useApi } from '../../../composables/useApi.js'
+import { usePatientApi } from '../../../composables/usePatientApi.js'
 
-export default {
-  name: 'PatientRecordsTab',
-  components: {
-    LoadingSpinner,
-    ErrorMessage
-  },
-  props: {
-    doctorId: {
-      type: String,
-      required: true
-    }
-  },
-  setup() {
-    const searchQuery = ref('')
-    const patient = ref(null)
-    const loading = ref(false)
-    const error = ref(null)
-    const { get } = useApi()
+const props = defineProps({
+  doctorId: {
+    type: String,
+    required: true
+  }
+})
 
-    const searchPatients = async () => {
-      if (!searchQuery.value.trim()) {
-        error.value = 'Please enter a patient name or ID'
-        return
-      }
+const searchQuery = ref('')
+const patient = ref(null)
+const error = ref(null)
 
+const { loading, fetchPatientById, fetchPatients } = usePatientApi()
+
+// Search for patient by name or ID
+const searchPatients = async () => {
+  if (!searchQuery.value.trim()) {
+    error.value = 'Please enter a patient name or ID'
+    return
+  }
+
+  try {
+    error.value = null
+    patient.value = null
+
+    // Try to fetch as patient ID first (assuming it's a UUID or ID format)
+    const searchTerm = searchQuery.value.trim()
+    
+    try {
+      // First try as ID
+      patient.value = await fetchPatientById(searchTerm)
+    } catch (idErr) {
+      // If ID search fails, try searching by name
       try {
-        loading.value = true
-        error.value = null
-        patient.value = null
-
-        // Search for patient
-        const response = await get(`/patients?search=${searchQuery.value}`)
-        if (response && response.length > 0) {
-          patient.value = response[0]
+        const results = await fetchPatients(1, 10, searchTerm)
+        if (results.patients && results.patients.length > 0) {
+          patient.value = results.patients[0]
         } else {
           error.value = 'No patient found matching your search'
         }
-      } catch (err) {
-        console.error('Failed to search patients:', err)
-        error.value = 'Failed to search patients. Please try again.'
-      } finally {
-        loading.value = false
+      } catch (nameErr) {
+        error.value = 'Failed to search patients'
+        console.error('[PatientRecordsTab] Search error:', nameErr)
       }
     }
-
-    return {
-      searchQuery,
-      patient,
-      loading,
-      error,
-      searchPatients
-    }
+  } catch (err) {
+    console.error('[PatientRecordsTab] Failed to search patients:', err)
+    error.value = 'Failed to search patients. Please try again.'
   }
 }
+
+defineExpose({
+  searchPatients
+})
 </script>
 
 <style scoped>

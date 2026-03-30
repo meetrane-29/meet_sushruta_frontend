@@ -94,12 +94,13 @@ const credentials = ref({
 })
 
 const DASHBOARD_ROUTES = {
-  admin:    '/dashboard/admin',
-  doctor:   '/dashboard/doctor',
-  nurse:    '/dashboard/nurse',
-  pharmacy: '/dashboard/pharmacy',
-  lab:      '/dashboard/lab',
-  patient:  '/dashboard/patient',
+  admin:       '/dashboard/admin',
+  doctor:      '/dashboard/doctor',
+  nurse:       '/dashboard/nurse',
+  pharmacy:    '/dashboard/pharmacy',
+  lab:         '/dashboard/lab',
+  patient:     '/dashboard/patient',
+  receptionist: '/dashboard/reception',
 }
 
 const handleLogin = async () => {

@@ -31,7 +31,7 @@ export const usePublicStore = defineStore('public', () => {
         experience: 10, // Default since API doesn't have experience field
         slug: doc.user?.first_name ? doc.user.first_name.toLowerCase() + '-' + (doc.user.last_name || '').toLowerCase() : 'unknown'
       }))
-      specialties.value = specialtiesRes.data.data || []
+      specialties.value = specialtiesRes.data.specializations || []
     } catch (err) {
       console.error('Failed to fetch public data:', err)
       error.value = 'Failed to load public data'

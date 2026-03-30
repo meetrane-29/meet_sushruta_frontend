@@ -48,7 +48,7 @@
                   View Doctors
                 </router-link>
                 <router-link
-                  to="/book/1"
+                  to="/doctors"
                   class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-medium text-center text-sm"
                 >
                   Book Now

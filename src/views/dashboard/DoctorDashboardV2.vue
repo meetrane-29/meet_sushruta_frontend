@@ -61,6 +61,17 @@
           >
             🏥 IPD Patients
           </button>
+          <button
+            @click="activeTab = 'ratings'"
+            :class="[
+              'px-6 py-2 rounded-lg font-semibold transition-all',
+              activeTab === 'ratings'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ]"
+          >
+            ⭐ Patient Ratings
+          </button>
         </div>
       </div>
 
@@ -77,6 +88,9 @@
 
         <!-- IPD Patients Tab -->
         <IPDPatientsTab v-if="activeTab === 'ipd'" :doctor-id="currentDoctorId" />
+
+        <!-- Patient Ratings Tab -->
+        <PatientRatingSystem v-if="activeTab === 'ratings'" />
       </div>
     </div>
 </template>
@@ -87,6 +101,7 @@ import DailyScheduleTab from './tabs/DailyScheduleTab.vue'
 import PatientRecordsTab from './tabs/PatientRecordsTab.vue'
 import CurrentPatientManagementTab from './tabs/CurrentPatientManagementTab.vue'
 import IPDPatientsTab from './tabs/IPDPatientsTab.vue'
+import PatientRatingSystem from '../PatientRatingSystem.vue'
 import { useApi } from '../../composables/useApi.js'
 
 export default {
@@ -95,7 +110,8 @@ export default {
     DailyScheduleTab,
     PatientRecordsTab,
     CurrentPatientManagementTab,
-    IPDPatientsTab
+    IPDPatientsTab,
+    PatientRatingSystem
   },
   setup() {
     const activeTab = ref('schedule')

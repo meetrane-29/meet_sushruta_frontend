@@ -529,12 +529,14 @@ const authStore = useAuthStore()
 
 const isLoading = ref(true)
 const error = ref(null)
+const loadingStats = ref(true)
 const dashboardData = ref({
   stats: {
-    total_patients: 0,
-    total_doctors: 0,
-    today_appointments: 0,
-    total_users: 0
+    total_patients: '...',
+    total_doctors: '...',
+    today_appointments: '...',
+    total_users: 0,
+    total_nurses: '...'
   },
   recent_patients: [],
   top_doctors: [],
@@ -571,6 +573,82 @@ const showBedTypeModal = ref(false)
 const selectedBedType = ref('')
 const bedTypePatients = ref([])
 const loadingBedType = ref(false)
+
+// Fetch total patients count
+const fetchTotalPatients = async () => {
+  try {
+    const response = await api.get('/patients')
+    let count = 0
+    if (Array.isArray(response.data)) {
+      count = response.data.length
+    } else if (response.data.data) {
+      count = Array.isArray(response.data.data) ? response.data.data.length : response.data.data.total || response.data.data.count || 0
+    } else if (response.data.total !== undefined) {
+      count = response.data.total
+    }
+    dashboardData.value.stats.total_patients = count
+  } catch (err) {
+    console.error('Failed to fetch patients count:', err)
+    dashboardData.value.stats.total_patients = 'N/A'
+  }
+}
+
+// Fetch total doctors count
+const fetchTotalDoctors = async () => {
+  try {
+    const response = await api.get('/doctors')
+    let count = 0
+    if (Array.isArray(response.data)) {
+      count = response.data.length
+    } else if (response.data.data) {
+      count = Array.isArray(response.data.data) ? response.data.data.length : response.data.data.total || response.data.data.count || 0
+    } else if (response.data.total !== undefined) {
+      count = response.data.total
+    }
+    dashboardData.value.stats.total_doctors = count
+  } catch (err) {
+    console.error('Failed to fetch doctors count:', err)
+    dashboardData.value.stats.total_doctors = 'N/A'
+  }
+}
+
+// Fetch total appointments count
+const fetchTotalAppointments = async () => {
+  try {
+    const response = await api.get('/appointments')
+    let count = 0
+    if (Array.isArray(response.data)) {
+      count = response.data.length
+    } else if (response.data.data) {
+      count = Array.isArray(response.data.data) ? response.data.data.length : response.data.data.total || response.data.data.count || 0
+    } else if (response.data.total !== undefined) {
+      count = response.data.total
+    }
+    dashboardData.value.stats.today_appointments = count
+  } catch (err) {
+    console.error('Failed to fetch appointments count:', err)
+    dashboardData.value.stats.today_appointments = 'N/A'
+  }
+}
+
+// Fetch total nurses count
+const fetchTotalNurses = async () => {
+  try {
+    const response = await api.get('/nurses')
+    let count = 0
+    if (Array.isArray(response.data)) {
+      count = response.data.length
+    } else if (response.data.data) {
+      count = Array.isArray(response.data.data) ? response.data.data.length : response.data.data.total || response.data.data.count || 0
+    } else if (response.data.total !== undefined) {
+      count = response.data.total
+    }
+    dashboardData.value.stats.total_nurses = count
+  } catch (err) {
+    console.error('Failed to fetch nurses count:', err)
+    dashboardData.value.stats.total_nurses = 'N/A'
+  }
+}
 
 // Format timestamp to readable date
 const formatDate = (timestamp) => {
@@ -693,12 +771,30 @@ onMounted(async () => {
     return
   }
 
-  await Promise.all([
-    fetchDashboardData(),
-    fetchBedStats(),
-    fetchEquipmentStats(),
-    fetchOperationSchedules(),
-    fetchOTStats()
-  ])
+  try {
+    // Fetch stats in parallel
+    await Promise.all([
+      fetchTotalPatients(),
+      fetchTotalDoctors(),
+      fetchTotalAppointments(),
+      fetchTotalNurses()
+    ])
+    
+    loadingStats.value = false
+
+    // Fetch other dashboard data in parallel
+    await Promise.all([
+      fetchDashboardData(),
+      fetchBedStats(),
+      fetchEquipmentStats(),
+      fetchOperationSchedules(),
+      fetchOTStats()
+    ])
+  } catch (err) {
+    error.value = 'Failed to load dashboard. Please try again.'
+    console.error('Dashboard load error:', err)
+  } finally {
+    isLoading.value = false
+  }
 })
 </script>

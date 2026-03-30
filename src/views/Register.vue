@@ -140,40 +140,45 @@
 
           <!-- Additional Details Section -->
           <div class="pt-4 border-t-2 border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Patient Information (Optional)</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Patient Information *</h3>
 
             <!-- Date of Birth -->
             <div>
-              <label class="block text-sm font-medium text-gray-900 mb-2">Date of Birth</label>
+              <label class="block text-sm font-medium text-gray-900 mb-2">Date of Birth *</label>
               <input
                 v-model="formData.date_of_birth"
                 type="date"
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                :class="{ 'border-red-500': errors.date_of_birth }"
               />
+              <p v-if="errors.date_of_birth" class="text-xs text-red-600 mt-1">{{ errors.date_of_birth }}</p>
             </div>
 
             <!-- Gender & Blood Group Row -->
             <div class="grid grid-cols-2 gap-4 mt-4">
               <!-- Gender -->
               <div>
-                <label class="block text-sm font-medium text-gray-900 mb-2">Gender</label>
+                <label class="block text-sm font-medium text-gray-900 mb-2">Gender *</label>
                 <select
                   v-model="formData.gender"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                  :class="{ 'border-red-500': errors.gender }"
                 >
                   <option value="">Select Gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other</option>
                 </select>
+                <p v-if="errors.gender" class="text-xs text-red-600 mt-1">{{ errors.gender }}</p>
               </div>
 
               <!-- Blood Group -->
               <div>
-                <label class="block text-sm font-medium text-gray-900 mb-2">Blood Group</label>
+                <label class="block text-sm font-medium text-gray-900 mb-2">Blood Group *</label>
                 <select
                   v-model="formData.blood_group"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                  :class="{ 'border-red-500': errors.blood_group }"
                 >
                   <option value="">Select Blood Group</option>
                   <option value="A+">A+</option>
@@ -185,6 +190,7 @@
                   <option value="AB+">AB+</option>
                   <option value="AB-">AB-</option>
                 </select>
+                <p v-if="errors.blood_group" class="text-xs text-red-600 mt-1">{{ errors.blood_group }}</p>
               </div>
             </div>
 
@@ -195,7 +201,7 @@
                 v-model="formData.address"
                 placeholder="123 Main Street, City, State, Postal Code"
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
-                rows="3"
+                rows="2"
               ></textarea>
             </div>
 
@@ -224,23 +230,27 @@
             <!-- Emergency Contact -->
             <div class="grid grid-cols-2 gap-4 mt-4">
               <div>
-                <label class="block text-sm font-medium text-gray-900 mb-2">Emergency Contact Name</label>
+                <label class="block text-sm font-medium text-gray-900 mb-2">Emergency Contact Name *</label>
                 <input
                   v-model="formData.emergency_contact_name"
                   type="text"
                   placeholder="Contact person name"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                  :class="{ 'border-red-500': errors.emergency_contact_name }"
                 />
+                <p v-if="errors.emergency_contact_name" class="text-xs text-red-600 mt-1">{{ errors.emergency_contact_name }}</p>
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-900 mb-2">Emergency Contact Phone</label>
+                <label class="block text-sm font-medium text-gray-900 mb-2">Emergency Contact Phone *</label>
                 <input
                   v-model="formData.emergency_contact_phone"
                   type="tel"
                   placeholder="Contact number"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                  :class="{ 'border-red-500': errors.emergency_contact_phone }"
                 />
+                <p v-if="errors.emergency_contact_phone" class="text-xs text-red-600 mt-1">{{ errors.emergency_contact_phone }}</p>
               </div>
             </div>
           </div>
@@ -309,6 +319,11 @@ const errors = ref({
   phone: '',
   password: '',
   confirm_password: '',
+  date_of_birth: '',
+  gender: '',
+  blood_group: '',
+  emergency_contact_name: '',
+  emergency_contact_phone: '',
 })
 
 const validateForm = () => {
@@ -319,6 +334,11 @@ const validateForm = () => {
     phone: '',
     password: '',
     confirm_password: '',
+    date_of_birth: '',
+    gender: '',
+    blood_group: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
   }
 
   let isValid = true
@@ -375,6 +395,55 @@ const validateForm = () => {
     isValid = false
   } else if (formData.value.password !== formData.value.confirm_password) {
     errors.value.confirm_password = 'Passwords do not match'
+    isValid = false
+  }
+
+  // Date of Birth validation
+  if (!formData.value.date_of_birth) {
+    errors.value.date_of_birth = 'Date of birth is required'
+    isValid = false
+  } else {
+    // Validate age (must be at least 18)
+    const birthDate = new Date(formData.value.date_of_birth)
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    if (age < 18) {
+      errors.value.date_of_birth = 'You must be at least 18 years old'
+      isValid = false
+    }
+  }
+
+  // Gender validation
+  if (!formData.value.gender) {
+    errors.value.gender = 'Gender is required'
+    isValid = false
+  }
+
+  // Blood Group validation
+  if (!formData.value.blood_group) {
+    errors.value.blood_group = 'Blood group is required'
+    isValid = false
+  }
+
+  // Emergency Contact Name validation
+  if (!formData.value.emergency_contact_name.trim()) {
+    errors.value.emergency_contact_name = 'Emergency contact name is required'
+    isValid = false
+  } else if (formData.value.emergency_contact_name.trim().length < 2) {
+    errors.value.emergency_contact_name = 'Emergency contact name must be at least 2 characters'
+    isValid = false
+  }
+
+  // Emergency Contact Phone validation
+  if (!formData.value.emergency_contact_phone.trim()) {
+    errors.value.emergency_contact_phone = 'Emergency contact phone is required'
+    isValid = false
+  } else if (formData.value.emergency_contact_phone.trim().length < 10) {
+    errors.value.emergency_contact_phone = 'Emergency contact phone must be at least 10 digits'
     isValid = false
   }
 

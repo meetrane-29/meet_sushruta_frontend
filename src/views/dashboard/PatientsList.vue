@@ -99,12 +99,20 @@
                 {{ formatDate(patient.created_at) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm">
-                <button
-                  @click="viewPatientDetails(patient)"
-                  class="text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  View
-                </button>
+                <div class="flex gap-2">
+                  <button
+                    @click="viewPatientDetails(patient)"
+                    class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-xs font-medium"
+                  >
+                    View
+                  </button>
+                  <button
+                    @click="startEditPatient(patient)"
+                    class="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition text-xs font-medium"
+                  >
+                    Edit
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -231,16 +239,202 @@
         </div>
       </div>
     </div>
+
+    <!-- Patient Edit Modal -->
+    <div v-if="showEditModal && editingPatient" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+          <h2 class="text-2xl font-bold text-gray-900">Edit Patient Information</h2>
+          <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+
+        <form @submit.prevent="savePatientChanges" class="px-6 py-6 space-y-4">
+          <!-- Error Message -->
+          <div v-if="editError" class="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-sm text-red-700">{{ editError }}</p>
+          </div>
+
+          <!-- Personal Info Section -->
+          <div class="border-t border-gray-200 pt-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <!-- First Name -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                <input
+                  v-model="editingPatient.user.first_name"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <!-- Last Name -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                <input
+                  v-model="editingPatient.user.last_name"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <!-- Email -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <input
+                  v-model="editingPatient.user.email"
+                  type="email"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <!-- Phone -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <input
+                  v-model="editingPatient.user.phone"
+                  type="tel"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Medical Info Section -->
+          <div class="border-t border-gray-200 pt-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Medical Information</h3>
+
+            <div class="grid grid-cols-2 gap-4">
+              <!-- Date of Birth -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                <input
+                  v-model="editingPatient.date_of_birth"
+                  type="date"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <!-- Gender -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                <select
+                  v-model="editingPatient.gender"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <!-- Blood Group -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Blood Group</label>
+                <select
+                  v-model="editingPatient.blood_group"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Blood Group</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Address -->
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
+              <textarea
+                v-model="editingPatient.address"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="2"
+              ></textarea>
+            </div>
+
+            <!-- Medical History -->
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Medical History</label>
+              <textarea
+                v-model="editingPatient.medical_history"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="2"
+              ></textarea>
+            </div>
+
+            <!-- Allergies -->
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Allergies</label>
+              <textarea
+                v-model="editingPatient.allergies"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="2"
+              ></textarea>
+            </div>
+
+            <!-- Emergency Contact -->
+            <div class="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Name</label>
+                <input
+                  v-model="editingPatient.emergency_contact_name"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Phone</label>
+                <input
+                  v-model="editingPatient.emergency_contact_phone"
+                  type="tel"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+          <button
+            @click="closeEditModal"
+            class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400 transition font-medium"
+            :disabled="editSubmitting"
+          >
+            Cancel
+          </button>
+          <button
+            @click="savePatientChanges"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            :disabled="editSubmitting"
+          >
+            <span v-if="!editSubmitting">💾 Save Changes</span>
+            <span v-else>Saving...</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi'
+import { usePatientApi } from '@/composables/usePatientApi'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 
 const api = useApi()
+const { updatePatient } = usePatientApi()
 const loading = ref(false)
 const error = ref('')
 const patients = ref([])
@@ -250,6 +444,12 @@ const pageSize = ref(10)
 const searchQuery = ref('')
 const showDetailsModal = ref(false)
 const selectedPatient = ref(null)
+
+// Edit modal state
+const showEditModal = ref(false)
+const editingPatient = ref(null)
+const editError = ref('')
+const editSubmitting = ref(false)
 
 const totalPages = computed(() => Math.ceil(totalPatients.value / pageSize.value))
 
@@ -325,6 +525,59 @@ const goToPage = (page) => {
 const viewPatientDetails = (patient) => {
   selectedPatient.value = patient
   showDetailsModal.value = true
+}
+
+// Start editing patient
+const startEditPatient = (patient) => {
+  // Create a deep copy to avoid modifying the original
+  editingPatient.value = JSON.parse(JSON.stringify(patient))
+  editError.value = ''
+  showEditModal.value = true
+}
+
+// Close edit modal
+const closeEditModal = () => {
+  showEditModal.value = false
+  editingPatient.value = null
+  editError.value = ''
+}
+
+// Save patient changes
+const savePatientChanges = async () => {
+  editSubmitting.value = true
+  editError.value = ''
+
+  try {
+    // Prepare update data
+    const updateData = {
+      first_name: editingPatient.value.user.first_name,
+      last_name: editingPatient.value.user.last_name,
+      email: editingPatient.value.user.email,
+      phone: editingPatient.value.user.phone,
+      date_of_birth: editingPatient.value.date_of_birth,
+      gender: editingPatient.value.gender,
+      blood_group: editingPatient.value.blood_group,
+      address: editingPatient.value.address,
+      medical_history: editingPatient.value.medical_history,
+      allergies: editingPatient.value.allergies,
+      emergency_contact_name: editingPatient.value.emergency_contact_name,
+      emergency_contact_phone: editingPatient.value.emergency_contact_phone,
+    }
+
+    // Call API to update patient
+    await updatePatient(editingPatient.value.id, updateData)
+
+    // Refresh the patient list
+    await performSearch()
+
+    // Close modal
+    closeEditModal()
+  } catch (err) {
+    editError.value = err || 'Failed to save changes. Please try again.'
+    console.error('Edit patient error:', err)
+  } finally {
+    editSubmitting.value = false
+  }
 }
 
 // Load on mount

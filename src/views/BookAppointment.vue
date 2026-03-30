@@ -168,12 +168,20 @@ const todayDate = computed(() => {
 const loadDoctor = async () => {
   try {
     const res = await api.get(`/doctors/${doctorId}`)
-    if (res.data.data) {
+    if (res.data?.data) {
       doctor.value = res.data.data
+    } else {
+      error.value = 'Doctor not found'
+      setTimeout(() => {
+        router.push('/doctors')
+      }, 2000)
     }
-  } catch (error) {
-    console.error('Failed to load doctor:', error)
-    error.value = 'Failed to load doctor details'
+  } catch (err) {
+    console.error('Failed to load doctor:', err)
+    error.value = 'Failed to load doctor details. Please select a doctor from the list.'
+    setTimeout(() => {
+      router.push('/doctors')
+    }, 2000)
   }
 }
 
@@ -182,6 +190,22 @@ const submitBooking = async () => {
   if (!authStore.isLoggedIn || !authStore.userId) {
     error.value = 'Please log in to book an appointment'
     router.push('/login')
+    return
+  }
+
+  // Validate userId is a UUID
+  if (!isValidUUID(authStore.userId)) {
+    error.value = 'Invalid user session. Please log in again.'
+    console.error('[BookAppointment] Invalid userId:', authStore.userId)
+    router.push('/login')
+    return
+  }
+
+  // Validate doctorId is a UUID
+  if (!isValidUUID(doctorId)) {
+    error.value = 'Invalid doctor selected. Please select a doctor.'
+    console.error('[BookAppointment] Invalid doctorId:', doctorId)
+    router.push('/doctors')
     return
   }
 
@@ -205,15 +229,58 @@ const submitBooking = async () => {
   success.value = ''
 
   try {
+    console.log('[BookAppointment] Step 1: Check userId')
+    console.log('  - authStore.userId:', authStore.userId)
+    console.log('  - typeof:', typeof authStore.userId)
+    console.log('  - isLoggedIn:', authStore.isLoggedIn)
+    
+    // Verify we have valid IDs before sending
+    if (!authStore.userId || authStore.userId === 'undefined' || authStore.userId === '') {
+      console.error('[BookAppointment] FAILED: userId is empty, shows as:', authStore.userId)
+      error.value = 'User session corrupted. Please log in again.'
+      authStore.logout()
+      router.push('/login')
+      return
+    }
+
+    console.log('[BookAppointment] Step 2: Check doctorId')
+    console.log('  - doctorId:', doctorId)
+    
+    if (!doctorId || doctorId === 'undefined' || doctorId === '') {
+      console.error('[BookAppointment] FAILED: doctorId is empty')
+      error.value = 'Doctor ID corrupted. Please select a doctor again.'
+      router.push('/doctors')
+      return
+    }
+
+    console.log('[BookAppointment] Step 3: Build request data')
     // Send request with correct data structure matching backend
-    const response = await api.post('/appointments', {
-      patient_id: authStore.userId,
-      doctor_id: doctorId,
-      appointment_date: booking.value.appointmentDate,
-      appointment_time: booking.value.appointmentTime,
-      reason: booking.value.reason,
-      notes: booking.value.notes || ''
-    })
+    const patientId = authStore.userId.toString().trim()
+    const docId = doctorId.toString().trim()
+    const appDate = booking.value.appointmentDate.toString().trim()
+    const appTime = booking.value.appointmentTime.toString().trim()
+    const appReason = booking.value.reason.toString().trim()
+    const appNotes = (booking.value.notes || '').toString().trim()
+    
+    console.log('  - patientId:', patientId)
+    console.log('  - docId:', docId)
+    console.log('  - appDate:', appDate)
+    console.log('  - appTime:', appTime)
+    console.log('  - appReason:', appReason)
+    
+    const requestData = {
+      patient_id: patientId,
+      doctor_id: docId,
+      appointment_date: appDate,
+      appointment_time: appTime,
+      reason: appReason,
+      notes: appNotes
+    }
+    
+    console.log('[BookAppointment] FINAL REQUEST DATA:', JSON.stringify(requestData, null, 2))
+    console.log('[BookAppointment] Keys in request:', Object.keys(requestData))
+    
+    const response = await api.post('/appointments', requestData)
 
     success.value =
       'Appointment booked successfully! Check your email for confirmation details.'
@@ -247,12 +314,38 @@ const submitBooking = async () => {
   }
 }
 
+// Validate if string is a valid UUID
+const isValidUUID = (uuid) => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(uuid)
+}
+
 onMounted(() => {
+  // First, initialize auth store from sessionStorage
+  authStore.initializeFromStorage()
+  
   // Check if user is logged in
   if (!authStore.isLoggedIn) {
+    console.warn('[BookAppointment] User not logged in')
     router.push('/login')
     return
   }
+
+  console.log('[BookAppointment] User logged in:', {
+    userId: authStore.userId,
+    role: authStore.role
+  })
+
+  // Validate doctor ID is a proper UUID
+  if (!doctorId || !isValidUUID(doctorId)) {
+    error.value = 'Please select a doctor first'
+    console.warn('[BookAppointment] Invalid doctorId:', doctorId)
+    setTimeout(() => {
+      router.push('/doctors')
+    }, 2000)
+    return
+  }
+
   loadDoctor()
 })
 </script>

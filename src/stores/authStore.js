@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', {
           password,
         })
 
-        const { access_token, refresh_token, role, user_id } = response.data.data
+        const { access_token, refresh_token, role, user_id, first_name, last_name } = response.data.data
 
         console.log('[authStore] login success — role:', role, '| user_id:', user_id)
 
@@ -30,11 +30,13 @@ export const useAuthStore = defineStore('auth', {
         this.refreshToken = refresh_token
         this.role = role
         this.userId = user_id
+        this.userName = `${first_name} ${last_name}`
 
         sessionStorage.setItem('accessToken', access_token)
         sessionStorage.setItem('refreshToken', refresh_token)
         sessionStorage.setItem('role', role)
         sessionStorage.setItem('userId', user_id)
+        sessionStorage.setItem('userName', `${first_name} ${last_name}`)
 
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
 
