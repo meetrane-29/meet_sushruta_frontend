@@ -140,6 +140,39 @@
         </div>
       </div>
 
+      <!-- SECTION 2.5: Today's Active Doctors -->
+      <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Today's Active Doctors</h2>
+            <p class="text-sm text-gray-500">Doctors who logged in today</p>
+          </div>
+          <span class="bg-green-100 text-green-700 text-sm font-semibold px-3 py-1 rounded-full">
+            {{ activeDoctors.length }} online
+          </span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <div v-if="activeDoctors.length === 0" class="px-6 py-8 text-center text-gray-400">
+            No doctors have logged in yet today
+          </div>
+          <div
+            v-for="doc in activeDoctors"
+            :key="doc.doctor_id"
+            class="px-6 py-3 flex items-center gap-4 hover:bg-gray-50 transition"
+          >
+            <div class="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm shrink-0">
+              {{ doc.first_name?.[0] }}{{ doc.last_name?.[0] }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-gray-900 truncate">Dr. {{ doc.first_name }} {{ doc.last_name }}</p>
+              <p class="text-xs text-gray-500 truncate">{{ doc.specialization }}<span v-if="doc.department"> &bull; {{ doc.department }}</span></p>
+            </div>
+            <span class="text-xs text-gray-400 whitespace-nowrap">Login: {{ formatTime(doc.last_login) }}</span>
+            <span class="w-2 h-2 rounded-full bg-green-400 shrink-0"></span>
+          </div>
+        </div>
+      </div>
+
       <!-- SECTION 3: Top Doctors + Department Load + Nurse Roles (3 columns) -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Top Doctors -->
@@ -511,7 +544,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/authStore'
@@ -563,6 +596,24 @@ const otStats = ref({
   today_operations: 0,
   upcoming_operations: 0
 })
+
+// Today's active doctors
+const activeDoctors = ref([])
+let activeDoctorsPollInterval = null
+
+const fetchActiveDoctors = async () => {
+  try {
+    const res = await api.get('/doctors/active-today')
+    activeDoctors.value = res.data?.data?.doctors || []
+  } catch (err) {
+    console.error('Failed to fetch active doctors:', err)
+  }
+}
+
+const formatTime = (ms) => {
+  if (!ms) return 'N/A'
+  return new Date(ms).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+}
 
 // Bed Type Modal State
 const showBedTypeModal = ref(false)
@@ -784,7 +835,8 @@ onMounted(async () => {
       fetchBedStats(),
       fetchEquipmentStats(),
       fetchOperationSchedules(),
-      fetchOTStats()
+      fetchOTStats(),
+      fetchActiveDoctors()
     ])
   } catch (err) {
     error.value = 'Failed to load dashboard. Please try again.'
@@ -792,5 +844,12 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
+
+  // Poll active doctors every 30 seconds for near-real-time updates
+  activeDoctorsPollInterval = setInterval(fetchActiveDoctors, 30000)
+})
+
+onUnmounted(() => {
+  clearInterval(activeDoctorsPollInterval)
 })
 </script>

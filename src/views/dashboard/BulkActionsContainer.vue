@@ -363,7 +363,7 @@ export default {
 
     const loadAdmissions = async () => {
       try {
-        const response = await get('/admissions?status=pending,admitted');
+        const response = await get('/admissions?status=active');
         const data = Array.isArray(response.data) ? response.data : response.data?.data || [];
         items.value = data.map(adm => ({
           id: adm.id,
@@ -380,7 +380,7 @@ export default {
 
     const loadDischargePatients = async () => {
       try {
-        const response = await get('/admissions?status=ready-for-discharge,discharging');
+        const response = await get('/admissions?status=discharged');
         const data = Array.isArray(response.data) ? response.data : response.data?.data || [];
         items.value = data.map(adm => ({
           id: adm.id,

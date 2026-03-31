@@ -84,9 +84,7 @@ const navItems = computed(() => {
       { label: 'Appointments', to: '/dashboard/appointments', icon: '📅' }
     ],
     doctor: [
-      { label: 'My Dashboard', to: '/dashboard/doctor', icon: '📊' },
-      { label: 'My Appointments', to: '/dashboard/my-appointments', icon: '📅' },
-      { label: 'Prescriptions', to: '/dashboard/prescriptions', icon: '📋' }
+      { label: 'My Dashboard', to: '/dashboard/doctor', icon: '📊' }
     ],
     patient: [
       { label: 'My Dashboard', to: '/dashboard/patient', icon: '📊' },
@@ -94,9 +92,7 @@ const navItems = computed(() => {
       { label: 'My Prescriptions', to: '/dashboard/prescriptions', icon: '💊' }
     ],
     nurse: [
-      { label: 'My Dashboard', to: '/dashboard/nurse', icon: '📊' },
-      { label: 'Appointments', to: '/dashboard/appointments', icon: '📅' },
-      { label: 'Vitals', to: '/dashboard/vitals', icon: '❤️' }
+      { label: 'My Dashboard', to: '/dashboard/nurse', icon: '📊' }
     ],
     pharmacy: [
       { label: 'Dashboard', to: '/dashboard/pharmacy', icon: '📊' },

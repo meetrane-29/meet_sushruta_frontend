@@ -52,6 +52,12 @@
 
         <!-- OPD Billing Tab -->
         <OPDBilling v-if="activeTab === 'billing'" :patientData="selectedPatient" />
+
+        <!-- Bed Management Tab -->
+        <BedManagementTab v-if="activeTab === 'beds'" />
+
+        <!-- IPD Requests Tab -->
+        <IPDRequestsTab v-if="activeTab === 'ipd'" />
       </div>
 
       <!-- Sidebar - Quick Stats -->
@@ -101,20 +107,58 @@
               @click="activeTab = 'search'"
               class="w-full text-left px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded transition-colors"
             >
-              🔍 Search Patient
+              Search Patient
             </button>
             <button
               @click="activeTab = 'waiting-list'"
               class="w-full text-left px-4 py-2 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded transition-colors"
             >
-              📋 Waiting List
+              Waiting List
             </button>
             <button
               @click="activeTab = 'billing'"
               class="w-full text-left px-4 py-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded transition-colors"
             >
-              💰 Billing
+              Billing
             </button>
+            <button
+              @click="activeTab = 'beds'"
+              class="w-full text-left px-4 py-2 bg-teal-50 text-teal-600 hover:bg-teal-100 rounded transition-colors"
+            >
+              Bed Management
+            </button>
+            <button
+              @click="activeTab = 'ipd'"
+              class="w-full text-left px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded transition-colors"
+            >
+              IPD Requests
+            </button>
+          </div>
+        </div>
+
+        <!-- Today's Active Doctors Card -->
+        <div class="bg-white rounded-lg shadow-sm p-5 mt-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-bold text-gray-800">Today's Active Doctors</h3>
+            <span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+              {{ activeDoctors.length }}
+            </span>
+          </div>
+          <div v-if="activeDoctors.length === 0" class="text-sm text-gray-400 text-center py-3">
+            No doctors logged in yet
+          </div>
+          <div v-else class="space-y-2 max-h-64 overflow-y-auto">
+            <div
+              v-for="doc in activeDoctors"
+              :key="doc.doctor_id"
+              class="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"
+            >
+              <span class="w-2 h-2 rounded-full bg-green-400 shrink-0"></span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-800 truncate">Dr. {{ doc.first_name }} {{ doc.last_name }}</p>
+                <p class="text-xs text-gray-500 truncate">{{ doc.specialization }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -162,13 +206,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import PatientRegistration from './tabs/PatientRegistration.vue'
 import PatientSearch from './tabs/PatientSearch.vue'
 import AppointmentManagement from './tabs/AppointmentManagement.vue'
 import WaitingListManager from './tabs/WaitingListManager.vue'
 import OPDBilling from './tabs/OPDBilling.vue'
+import BedManagementTab from './tabs/BedManagementTab.vue'
+import IPDRequestsTab from './tabs/IPDRequestsTab.vue'
 
 const api = useApi()
 const activeTab = ref('registration')
@@ -183,8 +229,13 @@ const tabs = [
   { id: 'search', label: 'Search Patient', icon: 'fas fa-search' },
   { id: 'appointments', label: 'Appointments', icon: 'fas fa-calendar' },
   { id: 'waiting-list', label: 'Waiting List', icon: 'fas fa-list' },
-  { id: 'billing', label: 'Billing', icon: 'fas fa-receipt' }
+  { id: 'billing', label: 'Billing', icon: 'fas fa-receipt' },
+  { id: 'beds', label: 'Bed Management', icon: 'fas fa-bed' },
+  { id: 'ipd', label: 'IPD Requests', icon: 'fas fa-hospital' }
 ]
+
+const activeDoctors = ref([])
+let activeDoctorsPollInterval = null
 
 const stats = ref({
   patientsToday: 0,
@@ -204,6 +255,16 @@ const updateDateTime = () => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// Load today's active doctors
+const loadActiveDoctors = async () => {
+  try {
+    const res = await api.get('/doctors/active-today')
+    activeDoctors.value = res.data?.data?.doctors || []
+  } catch (err) {
+    console.error('Failed to load active doctors:', err)
+  }
 }
 
 // Load today's appointments
@@ -245,16 +306,22 @@ const openBilling = (appt) => {
 
 onMounted(async () => {
   updateDateTime()
-  await loadTodayAppointments()
+  await Promise.all([loadTodayAppointments(), loadActiveDoctors()])
   // Update time every minute
   setInterval(updateDateTime, 60000)
-  
+  // Poll active doctors every 30 seconds
+  activeDoctorsPollInterval = setInterval(loadActiveDoctors, 30000)
+
   // Listen for tab switching events from PatientSearch
   window.addEventListener('switchTab', (event) => {
     if (event.detail && event.detail.tab) {
       activeTab.value = event.detail.tab
     }
   })
+})
+
+onUnmounted(() => {
+  clearInterval(activeDoctorsPollInterval)
 })
 </script>
 

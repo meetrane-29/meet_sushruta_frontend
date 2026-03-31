@@ -324,10 +324,17 @@ export default {
     })
 
     const fetchIPDPatients = async () => {
+      // Don't fetch if doctorId is not available
+      if (!props.doctorId) {
+        console.warn('Doctor ID not available, skipping fetch')
+        return
+      }
+
       try {
         loading.value = true
         error.value = null
-        const response = await get(`/doctors/ipd-patients?doctor_id=${props.doctorId}`)
+        // Backend gets doctor from user token, so doctor_id param is optional but good to pass
+        const response = await get(`/doctors/ipd-patients`)
         admittedPatients.value = response.data || []
       } catch (err) {
         console.error('Failed to fetch IPD patients:', err)
@@ -338,12 +345,52 @@ export default {
       }
     }
 
+    // Watch for doctorId changes and fetch when available
+    watch(() => props.doctorId, (newDoctorId) => {
+      if (newDoctorId) {
+        fetchIPDPatients()
+      }
+    })
+
     const createAdmission = async () => {
       try {
         loading.value = true
-        // API call would go here
-        console.log('Creating admission:', admissionForm.value)
-        alert('Patient admitted successfully!')
+        error.value = null
+
+        // Validate required fields
+        if (!admissionForm.value.patientId) {
+          error.value = 'Patient ID is required'
+          return
+        }
+        if (!admissionForm.value.reason) {
+          error.value = 'Admission reason is required'
+          return
+        }
+
+        console.log('Creating admission with doctor_id:', props.doctorId)
+
+        // Call the backend API to create admission
+        // Note: Backend can infer doctor_id from JWT token, but we pass it if available
+        const admissionData = {
+          patient_id: admissionForm.value.patientId,
+          reason: admissionForm.value.reason,
+          diagnosis: admissionForm.value.diagnosis,
+          ward: admissionForm.value.ward,
+          is_emergency: admissionForm.value.isEmergency,
+          admission_date: new Date().toISOString().split('T')[0]
+        }
+
+        // Add doctor_id if available (optional, backend uses JWT)
+        if (props.doctorId) {
+          admissionData.doctor_id = props.doctorId
+        }
+
+        const response = await post('/admissions', admissionData)
+
+        console.log('Admission created successfully:', response)
+        alert('✅ Patient admitted successfully!')
+        
+        // Reset form
         admissionForm.value = {
           patientId: '',
           reason: '',
@@ -352,10 +399,12 @@ export default {
           isEmergency: false
         }
         showAdmissionForm.value = false
+        
+        // Refresh the list
         fetchIPDPatients()
       } catch (err) {
         console.error('Failed to create admission:', err)
-        error.value = 'Failed to create admission'
+        error.value = err.response?.data?.message || 'Failed to create admission'
       } finally {
         loading.value = false
       }
