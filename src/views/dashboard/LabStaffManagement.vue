@@ -155,7 +155,9 @@
             <input
               v-model="registerForm.phone"
               type="tel"
-              placeholder="10-digit mobile number"
+              placeholder="9876543210"
+              maxlength="10"
+              @input="registerForm.phone = registerForm.phone.replace(/[^0-9]/g, '')"
               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
               :class="formErrors.phone ? 'border-red-400' : 'border-gray-300'"
             />

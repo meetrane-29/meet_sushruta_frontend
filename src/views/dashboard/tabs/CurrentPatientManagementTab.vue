@@ -5,7 +5,7 @@
     <div v-if="!selectedAppointment" class="bg-white p-12 rounded-lg shadow text-center text-gray-500">
       <p class="text-5xl mb-4">👆</p>
       <p class="text-xl font-semibold text-gray-700">No patient selected</p>
-      <p class="text-gray-500 mt-2">Daily Schedule tab mein kisi patient par click karein</p>
+      <p class="text-gray-500 mt-2">Click on a patient in Daily Schedule tab</p>
     </div>
 
     <!-- Patient selected -->
@@ -438,11 +438,11 @@
         <form @submit.prevent="saveSoapNotes" class="space-y-4">
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-2">
-              S — Subjective <span class="text-gray-400 font-normal">(Patient ki complaints)</span>
+              S — Subjective <span class="text-gray-400 font-normal">(Patient's complaints)</span>
             </label>
             <textarea
               v-model="soapForm.subjective"
-              placeholder="Patient kya bol raha hai? Symptoms, duration, severity..."
+              placeholder="What are the patient's symptoms? Include duration, severity, onset..."
               rows="3"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
             ></textarea>
@@ -702,7 +702,7 @@ export default {
       try {
         await apiClient.post('/prescriptions', {
           appointment_id: props.selectedAppointment.id,
-          doctor_id: authStore.user?.id,
+          doctor_id: authStore.userId,
           items,
           notes: prescriptionNotes.value
         })
@@ -722,7 +722,7 @@ export default {
     const orderLabTest = async () => {
       if (!props.selectedAppointment) return
       if (!labForm.value.testType || !labForm.value.testName) {
-        globalError.value = 'Test type aur test name required hain'
+        globalError.value = 'Test type and test name are required'
         setTimeout(() => { globalError.value = '' }, 3000)
         return
       }
@@ -732,7 +732,7 @@ export default {
       try {
         const payload = {
           patient_id: props.selectedAppointment.patient_id,
-          doctor_id: authStore.user?.id,
+          doctor_id: authStore.userId,
           test_type: labForm.value.testType,
           test_name: labForm.value.testName,
           priority: labForm.value.priority || 'normal',
@@ -756,7 +756,7 @@ export default {
     const saveSoapNotes = async () => {
       if (!props.selectedAppointment) return
       if (!soapForm.value.subjective && !soapForm.value.assessment) {
-        globalError.value = 'Kam se kam Subjective ya Assessment fill karein'
+        globalError.value = 'Please fill at least Subjective or Assessment'
         setTimeout(() => { globalError.value = '' }, 3000)
         return
       }
@@ -767,8 +767,9 @@ export default {
         const today = new Date().toISOString().split('T')[0]
         const payload = {
           patient_id: props.selectedAppointment.patient_id,
-          doctor_id: authStore.user?.id,
-          recorded_date: today,
+          user_id: authStore.userId,
+          recorded_date: today,  // optional — backend sets default if not provided
+          admission_id: null,     // OPD consultations have no admission
           subjective: soapForm.value.subjective,
           objective: soapForm.value.objective,
           assessment: soapForm.value.assessment,

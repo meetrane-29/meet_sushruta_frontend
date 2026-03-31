@@ -5,7 +5,7 @@
     <div v-if="!selectedAppointment && !patient" class="bg-white p-12 rounded-lg shadow text-center">
       <p class="text-5xl mb-4">👆</p>
       <p class="text-xl font-semibold text-gray-700">No patient selected</p>
-      <p class="text-gray-500 mt-2">Daily Schedule tab mein kisi patient par click karein</p>
+      <p class="text-gray-500 mt-2">Click on a patient in Daily Schedule tab</p>
     </div>
 
     <!-- Loading -->

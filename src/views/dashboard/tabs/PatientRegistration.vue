@@ -72,8 +72,10 @@
               <input
                 v-model="formData.phone"
                 type="tel"
+                maxlength="10"
+                @input="formData.phone = formData.phone.replace(/[^0-9]/g, '')"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-                placeholder="Enter phone number"
+                placeholder="9876543210"
                 required
               />
             </div>
@@ -191,8 +193,10 @@
               <input
                 v-model="formData.emergencyContact"
                 type="tel"
+                maxlength="10"
+                @input="formData.emergencyContact = formData.emergencyContact.replace(/[^0-9]/g, '')"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-                placeholder="Emergency contact phone"
+                placeholder="9876543210"
                 required
               />
             </div>

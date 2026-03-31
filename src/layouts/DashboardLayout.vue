@@ -87,9 +87,7 @@ const navItems = computed(() => {
       { label: 'My Dashboard', to: '/dashboard/doctor', icon: '📊' }
     ],
     patient: [
-      { label: 'My Dashboard', to: '/dashboard/patient', icon: '📊' },
-      { label: 'My Appointments', to: '/dashboard/my-appointments', icon: '📅' },
-      { label: 'My Prescriptions', to: '/dashboard/prescriptions', icon: '💊' }
+      { label: 'My Dashboard', to: '/dashboard/patient', icon: '📊' }
     ],
     nurse: [
       { label: 'My Dashboard', to: '/dashboard/nurse', icon: '📊' }

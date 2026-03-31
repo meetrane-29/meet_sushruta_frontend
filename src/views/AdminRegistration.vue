@@ -62,11 +62,12 @@
               v-model="form.phone"
               type="tel"
               id="phone"
-              placeholder="+91-XXXXXXXXXX"
+              placeholder="9876543210"
               required
-              minlength="10"
-              pattern="[0-9\\-+]{10,}"
+              maxlength="10"
+              @input="form.phone = form.phone.replace(/[^0-9]/g, '')"
             />
+            <small>Must be exactly 10 digits</small>
           </div>
         </div>
 

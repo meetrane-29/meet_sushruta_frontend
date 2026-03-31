@@ -330,7 +330,9 @@
               <input
                 v-model="nurseForm.phone"
                 type="tel"
-                placeholder="Mobile number"
+                placeholder="9876543210"
+                maxlength="10"
+                @input="nurseForm.phone = nurseForm.phone.replace(/[^0-9]/g, '')"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                 required
               />

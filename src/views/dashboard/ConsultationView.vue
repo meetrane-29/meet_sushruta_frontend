@@ -202,7 +202,17 @@
 
       <!-- Consultation Notes -->
       <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Consultation Notes & Diagnosis</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold text-gray-900">Consultation Notes & Diagnosis (SOAP)</h2>
+          <button
+            v-if="appointment.status === 'in_progress'"
+            @click="completeAppointment"
+            :disabled="completingAppointment"
+            class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition disabled:opacity-50 font-medium"
+          >
+            {{ completingAppointment ? '⏳ Done' : '✓ Done' }}
+          </button>
+        </div>
         <textarea
           v-model="consultationNotes"
           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 font-mono text-sm resize-vertical"
@@ -312,6 +322,19 @@
           >
             + Add Medicine
           </button>
+        </div>
+
+        <!-- Save Prescription Button (standalone) -->
+        <div v-if="prescriptions.length > 0" class="mt-6">
+          <button
+            @click="savePrescription"
+            :disabled="savingPrescription"
+            class="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <span v-if="!savingPrescription">💾 Save Prescription to Database</span>
+            <span v-else>⏳ Saving...</span>
+          </button>
+          <p class="text-xs text-gray-500 mt-2 text-center">Prescription will be saved to patient's medical history</p>
         </div>
       </div>
 
@@ -484,6 +507,8 @@ const labTestType = ref('')
 const labTestName = ref('')
 const labScheduledDate = ref('')
 const labPriority = ref('normal')
+const savingPrescription = ref(false)
+const completingAppointment = ref(false)
 
 const vitalsForm = ref({
   temperature: null,
@@ -687,7 +712,7 @@ const submitConsultation = async () => {
     for (const prescription of prescriptions.value) {
       const prescriptionData = {
         appointment_id: appointmentId.value,
-        doctor_id: authStore.user?.id,
+        doctor_id: authStore.userId,
         patient_id: appointment.value.patient_id,
         items: [
           {
@@ -740,7 +765,7 @@ const sendPrescriptionToPharmacy = async () => {
     for (const prescription of prescriptions.value) {
       const prescriptionData = {
         appointment_id: appointmentId.value,
-        doctor_id: authStore.user?.id,
+        doctor_id: authStore.userId,
         patient_id: appointment.value.patient_id,
         items: [
           {
@@ -787,7 +812,7 @@ const sendToLab = async () => {
     // Send to lab (lab request)
     await api.post(`/prescriptions/${appointmentId.value}/send-to-lab`, {
       patient_id: appointment.value.patient_id,
-      doctor_id: authStore.user?.id,
+      doctor_id: authStore.userId,
       test_type: labTestType.value,
       test_name: labTestName.value,
       scheduled_date: labScheduledDate.value || null,
@@ -806,6 +831,72 @@ const sendToLab = async () => {
     alert('Failed to send to lab: ' + (err.response?.data?.error || err.message))
   } finally {
     sendingToLab.value = false
+  }
+}
+
+const savePrescription = async () => {
+  if (prescriptions.value.length === 0) {
+    alert('Please add at least one medicine to the prescription')
+    return
+  }
+
+  savingPrescription.value = true
+  try {
+    // Create prescriptions and save to database
+    for (const prescription of prescriptions.value) {
+      const prescriptionData = {
+        appointment_id: appointmentId.value,
+        doctor_id: authStore.userId,
+        patient_id: appointment.value.patient_id,
+        items: [
+          {
+            medicine_name: prescription.medicine_name,
+            dosage: prescription.dosage,
+            frequency: prescription.frequency,
+            duration: prescription.duration
+          }
+        ],
+        notes: consultationNotes.value || 'Prescription added by doctor'
+      }
+
+      await api.post('/prescriptions', prescriptionData)
+    }
+
+    alert('✓ Prescription(s) saved to patient\'s medical history!')
+    // Clear prescriptions after saving
+    prescriptions.value = []
+    newMedicine.value = { medicine_name: '', dosage: '', frequency: '', duration: '' }
+  } catch (err) {
+    console.error('[ConsultationView] Error saving prescription:', err)
+    alert('Failed to save prescription: ' + (err.response?.data?.error || err.message))
+  } finally {
+    savingPrescription.value = false
+  }
+}
+
+const completeAppointment = async () => {
+  if (!appointmentId.value) {
+    alert('Invalid appointment ID')
+    return
+  }
+
+  completingAppointment.value = true
+  try {
+    await api.patch(`/appointments/${appointmentId.value}/status`, {
+      status: 'completed'
+    })
+
+    appointment.value.status = 'completed'
+    alert('✓ Appointment marked as completed!')
+    
+    // Redirect after 1 second
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    router.push('/dashboard/doctor')
+  } catch (err) {
+    console.error('[ConsultationView] Error completing appointment:', err)
+    alert('Failed to complete appointment: ' + (err.response?.data?.error || err.message))
+  } finally {
+    completingAppointment.value = false
   }
 }
 

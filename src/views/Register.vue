@@ -85,6 +85,8 @@
               v-model="formData.phone"
               type="tel"
               placeholder="9876543210"
+              maxlength="10"
+              @input="formData.phone = formData.phone.replace(/[^0-9]/g, '')"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
               :class="{ 'border-red-500': errors.phone }"
             />
@@ -247,6 +249,8 @@
                   v-model="formData.emergency_contact_phone"
                   type="tel"
                   placeholder="Contact number"
+                  maxlength="10"
+                  @input="formData.emergency_contact_phone = formData.emergency_contact_phone.replace(/[^0-9]/g, '')"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
                   :class="{ 'border-red-500': errors.emergency_contact_phone }"
                 />
@@ -375,8 +379,8 @@ const validateForm = () => {
   if (!formData.value.phone.trim()) {
     errors.value.phone = 'Phone number is required'
     isValid = false
-  } else if (formData.value.phone.trim().length < 10) {
-    errors.value.phone = 'Phone number must be at least 10 digits'
+  } else if (!/^\d{10}$/.test(formData.value.phone.trim())) {
+    errors.value.phone = 'Phone number must contain exactly 10 digits'
     isValid = false
   }
 
@@ -442,8 +446,8 @@ const validateForm = () => {
   if (!formData.value.emergency_contact_phone.trim()) {
     errors.value.emergency_contact_phone = 'Emergency contact phone is required'
     isValid = false
-  } else if (formData.value.emergency_contact_phone.trim().length < 10) {
-    errors.value.emergency_contact_phone = 'Emergency contact phone must be at least 10 digits'
+  } else if (!/^\d{10}$/.test(formData.value.emergency_contact_phone.trim())) {
+    errors.value.emergency_contact_phone = 'Emergency contact phone must contain exactly 10 digits'
     isValid = false
   }
 
