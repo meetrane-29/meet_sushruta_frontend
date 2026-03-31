@@ -196,10 +196,10 @@
             <h4 class="font-semibold text-gray-900 mb-4">Employment & Attendance</h4>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="text-sm text-gray-600">Joining Date (timestamp)</label>
+                <label class="text-sm text-gray-600">Joining Date</label>
                 <input
-                  v-model.number="editForm.joining_date"
-                  type="number"
+                  v-model="editForm.joining_date"
+                  type="date"
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -565,7 +565,7 @@ const refreshData = async () => {
     const response = await api.get('/nurses')
     // Extract array from nested data structure
     const data = response.data.data?.data || response.data.data || response.data || []
-    nurses.value = Array.isArray(data) ? data : []
+    nurses.value = Array.isArray(data) ? data.filter(n => n.user) : []
   } catch (err) {
     error.value = err.response?.data?.message || 'Failed to load nurses. Please try again.'
     console.error('Nurses fetch error:', err)
@@ -574,13 +574,18 @@ const refreshData = async () => {
   }
 }
 
+const toDateInputValue = (seconds) => {
+  if (!seconds || seconds <= 0) return ''
+  return new Date(Number(seconds) * 1000).toISOString().split('T')[0]
+}
+
 const viewNurseDetails = (nurse) => {
   selectedNurse.value = nurse
   editForm.value = {
     department: nurse.department || '',
     shift: nurse.shift || '',
     certification_url: nurse.certification_url || '',
-    joining_date: nurse.joining_date || 0,
+    joining_date: toDateInputValue(nurse.joining_date),
     salary: nurse.salary || 0,
     attendance_percentage: nurse.attendance_percentage || 0,
     leave_balance: nurse.leave_balance || 0
@@ -598,10 +603,17 @@ const updateNurse = async () => {
   if (!selectedNurse.value) return
 
   try {
-    const response = await api.patch(`/nurses/${selectedNurse.value.id}`, editForm.value)
+    const payload = {
+      ...editForm.value,
+      joining_date: editForm.value.joining_date
+        ? Math.floor(new Date(editForm.value.joining_date).getTime() / 1000)
+        : 0
+    }
+    const response = await api.patch(`/nurses/${selectedNurse.value.id}`, payload)
+    const updatedNurse = response.data.data
     const index = nurses.value.findIndex(n => n.id === selectedNurse.value.id)
     if (index !== -1) {
-      nurses.value[index] = response.data
+      nurses.value[index] = { ...nurses.value[index], ...updatedNurse }
     }
     closeModal()
     error.value = ''

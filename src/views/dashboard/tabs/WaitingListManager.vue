@@ -64,14 +64,14 @@
               <th class="px-4 py-3 text-left text-sm font-semibold text-gray-800">Token</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-gray-800">Patient Name</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-gray-800">Age</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-gray-800">Arrival</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-gray-800">Time</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-gray-800">Status</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-gray-800">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="(entry, idx) in waitingList"
+              v-for="entry in waitingList"
               :key="entry.id"
               :class="[
                 'border-b border-gray-200 hover:bg-gray-50',
@@ -89,7 +89,7 @@
               </td>
               <td class="px-4 py-3 text-gray-600">{{ getAge(entry.patient?.date_of_birth) }}</td>
               <td class="px-4 py-3 text-sm text-gray-600">
-                {{ formatTime(entry.arrival_time) }}
+                {{ formatTime(entry.appointment_time) }}
               </td>
               <td class="px-4 py-3">
                 <span
@@ -138,44 +138,9 @@
       </div>
 
       <!-- Empty State -->
-      <div v-if="selectedDoctorID && waitingList.length === 0" class="text-center py-12">
-        <p class="text-lg text-gray-600">No patients in waiting list</p>
-        <p class="text-sm text-gray-500 mt-2">Patients will appear here once appointments are confirmed</p>
-      </div>
-
-      <!-- Add to Waiting List Form -->
-      <div v-if="selectedDoctorID" class="mt-8 border-t pt-6">
-        <h3 class="text-lg font-bold text-gray-800 mb-4">Add Patient to Waiting List</h3>
-
-        <div class="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Appointment ID *</label>
-            <input
-              v-model="newWaitingForm.appointmentID"
-              type="text"
-              placeholder="Enter appointment ID"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Patient ID *</label>
-            <input
-              v-model="newWaitingForm.patientID"
-              type="text"
-              placeholder="Enter patient ID"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-            />
-          </div>
-        </div>
-
-        <button
-          @click="addToWaitingList"
-          :disabled="isLoading || !newWaitingForm.appointmentID || !newWaitingForm.patientID"
-          class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
-        >
-          ➕ Add to Waiting List
-        </button>
+      <div v-if="selectedDoctorID && !isLoading && waitingList.length === 0" class="text-center py-12">
+        <p class="text-lg text-gray-600">No appointments today for this doctor</p>
+        <p class="text-sm text-gray-500 mt-2">Today's appointments will appear here automatically</p>
       </div>
 
       <!-- Messages -->
@@ -191,7 +156,6 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useOPDApi } from '@/composables/useOPDApi'
 import { useApi } from '@/composables/useApi'
 
 const selectedDoctorID = ref('')
@@ -202,13 +166,7 @@ const successMessage = ref('')
 const errorMessage = ref('')
 const estimatedWaitTime = ref(0)
 
-const opdApi = useOPDApi()
 const { api } = useApi()
-
-const newWaitingForm = ref({
-  appointmentID: '',
-  patientID: ''
-})
 
 const stats = computed(() => {
   return {
@@ -219,55 +177,80 @@ const stats = computed(() => {
 })
 
 onMounted(async () => {
-  // Load doctors
   try {
     const result = await api.get('/doctors')
     if (result && result.data) {
-      // API returns { success: true, data: [...] }
       doctors.value = Array.isArray(result.data) ? result.data : (result.data.data || [])
     }
   } catch (error) {
-    console.error('Error loading doctors:', error)
+    console.error('[WaitingListManager] Error loading doctors:', error)
     doctors.value = []
   }
 })
+
+const appointmentToDisplayStatus = (status) => {
+  const map = { pending: 'waiting', confirmed: 'waiting', in_progress: 'called', completed: 'completed', cancelled: 'cancelled' }
+  return map[status] || status
+}
 
 const loadWaitingList = async () => {
   try {
     isLoading.value = true
     errorMessage.value = ''
 
-    const result = await opdApi.getDoctorWaitingList(selectedDoctorID.value)
-    if (result && result.data) {
-      waitingList.value = result.data.data?.waiting_list || []
+    // Pass doctor_id as query parameter if selected for server-side filtering
+    const url = selectedDoctorID.value 
+      ? `/appointments/today?doctor_id=${selectedDoctorID.value}`
+      : '/appointments/today'
+    
+    const result = await api.get(url)
+    const allAppointments = result.data?.data?.appointments || []
+
+    // If doctor_id was sent to API, the server already filtered it
+    // No additional client-side filtering needed
+    let doctorAppointments = allAppointments
+
+    // Ensure appointments are sorted by time
+    if (Array.isArray(doctorAppointments)) {
+      doctorAppointments = doctorAppointments.sort((a, b) => 
+        (a.appointment_time || '').localeCompare(b.appointment_time || '')
+      )
     }
 
-    // Get estimated wait time
-    const timeResult = await opdApi.getEstimatedWaitTime(selectedDoctorID.value)
-    if (timeResult && timeResult.data) {
-      estimatedWaitTime.value = timeResult.data.estimated_wait_time_minutes
-    }
+    waitingList.value = doctorAppointments.map((apt, idx) => ({
+      id: apt.id,
+      token_number: idx + 1,
+      status: appointmentToDisplayStatus(apt.status),
+      patient: apt.patient,
+      arrival_time: apt.created_at,
+      appointment_time: apt.appointment_time,
+      reason: apt.reason
+    }))
+
+    estimatedWaitTime.value = waitingList.value.filter(e => e.status === 'waiting').length * 15
   } catch (error) {
     errorMessage.value = 'Error loading waiting list'
-    console.error(error)
+    console.error('[WaitingListManager] Error:', error)
   } finally {
     isLoading.value = false
   }
 }
 
 const callNextPatient = async () => {
+  const next = waitingList.value.find(e => e.status === 'waiting')
+  if (!next) {
+    errorMessage.value = 'No more patients to call'
+    return
+  }
   try {
     isLoading.value = true
     errorMessage.value = ''
     successMessage.value = ''
-
-    const result = await opdApi.callNextPatient(selectedDoctorID.value)
-    if (result && result.data) {
-      successMessage.value = `Token ${result.data.token_number} - ${result.data.patient?.user?.first_name} called!`
-      await loadWaitingList()
-    }
+    await api.patch(`/appointments/${next.id}/status`, { status: 'in_progress' })
+    successMessage.value = `Token ${next.token_number} - ${next.patient?.user?.first_name} called!`
+    await loadWaitingList()
   } catch (error) {
-    errorMessage.value = error.message || 'No more patients to call'
+    errorMessage.value = error.message || 'Error calling patient'
   } finally {
     isLoading.value = false
   }
@@ -275,7 +258,7 @@ const callNextPatient = async () => {
 
 const markPatientSeen = async (entry) => {
   try {
-    await opdApi.markPatientSeen(entry.id)
+    await api.patch(`/appointments/${entry.id}/status`, { status: 'in_progress' })
     successMessage.value = 'Patient marked as seen'
     await loadWaitingList()
   } catch (error) {
@@ -285,7 +268,7 @@ const markPatientSeen = async (entry) => {
 
 const completeConsultation = async (entry) => {
   try {
-    await opdApi.completeConsultation(entry.id)
+    await api.patch(`/appointments/${entry.id}/status`, { status: 'completed' })
     successMessage.value = 'Consultation marked completed'
     await loadWaitingList()
   } catch (error) {
@@ -294,37 +277,14 @@ const completeConsultation = async (entry) => {
 }
 
 const cancelEntry = async (entry) => {
-  if (confirm('Cancel this waiting list entry?')) {
+  if (confirm('Cancel this appointment?')) {
     try {
-      await opdApi.cancelWaitingListEntry(entry.id)
-      successMessage.value = 'Entry cancelled'
+      await api.patch(`/appointments/${entry.id}/status`, { status: 'cancelled' })
+      successMessage.value = 'Appointment cancelled'
       await loadWaitingList()
     } catch (error) {
-      errorMessage.value = 'Error cancelling entry'
+      errorMessage.value = 'Error cancelling appointment'
     }
-  }
-}
-
-const addToWaitingList = async () => {
-  try {
-    isLoading.value = true
-    errorMessage.value = ''
-
-    const result = await opdApi.addToWaitingList(
-      newWaitingForm.value.appointmentID,
-      newWaitingForm.value.patientID,
-      selectedDoctorID.value
-    )
-
-    if (result && result.data) {
-      successMessage.value = `Patient added to waiting list with token ${result.data.token_number}`
-      newWaitingForm.value = { appointmentID: '', patientID: '' }
-      await loadWaitingList()
-    }
-  } catch (error) {
-    errorMessage.value = error.message || 'Error adding to waiting list'
-  } finally {
-    isLoading.value = false
   }
 }
 
@@ -340,17 +300,19 @@ const getAge = (dob) => {
   return age
 }
 
-const formatTime = (timestamp) => {
-  if (!timestamp) return 'N/A'
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+const formatTime = (timeStr) => {
+  if (!timeStr) return 'N/A'
+  // Handle both HH:MM string and millisecond timestamps
+  if (typeof timeStr === 'number') {
+    return new Date(timeStr).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+  }
+  return timeStr
 }
 
 const formatStatus = (status) => {
   const statusMap = {
     waiting: 'Waiting',
     called: 'Called',
-    seen: 'In Consultation',
     completed: 'Completed',
     cancelled: 'Cancelled'
   }

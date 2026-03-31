@@ -51,7 +51,7 @@
         <WaitingListManager v-if="activeTab === 'waiting-list'" />
 
         <!-- OPD Billing Tab -->
-        <OPDBilling v-if="activeTab === 'billing'" />
+        <OPDBilling v-if="activeTab === 'billing'" :patientData="selectedPatient" />
       </div>
 
       <!-- Sidebar - Quick Stats -->
@@ -61,9 +61,13 @@
           <h3 class="text-lg font-bold text-gray-800 mb-4">Quick Stats</h3>
           
           <div class="space-y-4">
-            <div class="bg-blue-50 p-4 rounded-lg">
+            <div
+              class="bg-blue-50 p-4 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+              @click="showTodayModal = true"
+              title="Click to see today's patients"
+            >
               <p class="text-sm text-gray-600">Patients Today</p>
-              <p class="text-2xl font-bold text-blue-600">{{ stats.patientsToday }}</p>
+              <p class="text-2xl font-bold text-blue-600 underline">{{ stats.patientsToday }}</p>
             </div>
 
             <div class="bg-green-50 p-4 rounded-lg">
@@ -116,6 +120,45 @@
       </div>
     </div>
   </div>
+
+  <!-- Today's Patients Modal -->
+  <div v-if="showTodayModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <div class="flex items-center justify-between p-5 border-b">
+        <h3 class="text-lg font-bold text-gray-800">Aaj ke Appointments ({{ todayAppointments.length }})</h3>
+        <button @click="showTodayModal = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="overflow-y-auto flex-1 p-4">
+        <div v-if="todayAppointments.length === 0" class="text-center text-gray-500 py-8">
+          Aaj koi appointment nahi hai
+        </div>
+        <div
+          v-for="appt in todayAppointments"
+          :key="appt.id"
+          class="flex items-center justify-between p-3 mb-2 border rounded-lg hover:bg-gray-50"
+        >
+          <div class="flex-1">
+            <p class="font-semibold text-gray-800">
+              {{ appt.patient?.user?.first_name }} {{ appt.patient?.user?.last_name }}
+            </p>
+            <p class="text-sm text-gray-500">
+              {{ appt.appointment_time }} &nbsp;|&nbsp;
+              Dr. {{ appt.doctor?.user?.first_name }} {{ appt.doctor?.user?.last_name }}
+            </p>
+            <span :class="['text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block', statusClass(appt.status)]">
+              {{ appt.status }}
+            </span>
+          </div>
+          <button
+            @click="openBilling(appt)"
+            class="ml-4 px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            💰 Billing
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -131,7 +174,9 @@ const api = useApi()
 const activeTab = ref('registration')
 const currentDateTime = ref('')
 const todayAppointments = ref([])
-const loading = ref(false)
+
+const showTodayModal = ref(false)
+const selectedPatient = ref(null)
 
 const tabs = [
   { id: 'registration', label: 'Patient Registration', icon: 'fas fa-user-plus' },
@@ -174,11 +219,42 @@ const loadTodayAppointments = async () => {
   }
 }
 
+const statusClass = (status) => {
+  const map = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    confirmed: 'bg-blue-100 text-blue-800',
+    in_progress: 'bg-orange-100 text-orange-800',
+    completed: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800'
+  }
+  return map[status] || 'bg-gray-100 text-gray-800'
+}
+
+const openBilling = (appt) => {
+  selectedPatient.value = {
+    patientId: appt.patient_id,
+    appointmentId: appt.id,
+    patientName: `${appt.patient?.user?.first_name || ''} ${appt.patient?.user?.last_name || ''}`.trim(),
+    doctorName: `${appt.doctor?.user?.first_name || ''} ${appt.doctor?.user?.last_name || ''}`.trim(),
+    appointmentTime: appt.appointment_time,
+    status: appt.status
+  }
+  showTodayModal.value = false
+  activeTab.value = 'billing'
+}
+
 onMounted(async () => {
   updateDateTime()
   await loadTodayAppointments()
   // Update time every minute
   setInterval(updateDateTime, 60000)
+  
+  // Listen for tab switching events from PatientSearch
+  window.addEventListener('switchTab', (event) => {
+    if (event.detail && event.detail.tab) {
+      activeTab.value = event.detail.tab
+    }
+  })
 })
 </script>
 

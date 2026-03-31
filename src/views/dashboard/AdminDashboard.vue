@@ -106,7 +106,6 @@
           <table class="w-full">
             <thead class="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">ID</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Name</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Age</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Department</th>
@@ -120,9 +119,6 @@
                 :key="patient.id"
                 class="hover:bg-gray-50 transition"
               >
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                  {{ patient.id.substring(0, 8) }}...
-                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ patient.name }}
                 </td>

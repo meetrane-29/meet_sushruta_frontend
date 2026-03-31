@@ -38,7 +38,7 @@
         class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <div v-if="doctors.length > 0" class="text-sm text-gray-600 py-2 whitespace-nowrap">
-        Showing {{ filteredDoctors.length }} of {{ doctors.length }}
+        Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, filteredDoctors.length) }} of {{ filteredDoctors.length }}
       </div>
     </div>
 
@@ -57,7 +57,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="(doctor, index) in filteredDoctors"
+              v-for="(doctor, index) in paginatedDoctors"
               :key="doctor.id || index"
               class="border-b border-gray-200 hover:bg-gray-50 transition cursor-pointer"
               @click="viewDoctorDetails(doctor)"
@@ -93,6 +93,42 @@
       <!-- No Results -->
       <div v-if="filteredDoctors.length === 0" class="py-12 text-center text-gray-600">
         <p class="text-lg">No doctors found</p>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="filteredDoctors.length > 0 && totalPages > 1" class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
+        <div class="text-sm text-gray-600">
+          Page <span class="font-medium">{{ currentPage }}</span> of <span class="font-medium">{{ totalPages }}</span>
+        </div>
+        <div class="flex gap-2">
+          <button
+            @click="previousPage"
+            :disabled="currentPage === 1"
+            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ← Previous
+          </button>
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            @click="goToPage(page)"
+            :class="[
+              'px-4 py-2 rounded-lg font-medium transition',
+              page === currentPage 
+                ? 'bg-blue-600 text-white' 
+                : 'border border-gray-300 hover:bg-gray-100'
+            ]"
+          >
+            {{ page }}
+          </button>
+          <button
+            @click="nextPage"
+            :disabled="currentPage === totalPages"
+            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next →
+          </button>
+        </div>
       </div>
     </div>
 
@@ -312,6 +348,8 @@ const searchQuery = ref('')
 const loading = ref(false)
 const error = ref('')
 const specialties = ref([])
+const currentPage = ref(1)
+const pageSize = 10
 
 // Modal states
 const showModal = ref(false)
@@ -351,15 +389,46 @@ const filteredDoctors = computed(() => {
   })
 })
 
+// Pagination computed properties
+const totalPages = computed(() => {
+  return Math.ceil(filteredDoctors.value.length / pageSize)
+})
+
+const paginatedDoctors = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return filteredDoctors.value.slice(start, end)
+})
+
 // Count active doctors
 const activeDoctors = computed(() => {
   return doctors.value.filter(doc => doc.user?.active).length
 })
 
+// Pagination functions
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+  }
+}
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
 // Fetch doctors from API
 const refreshData = async () => {
   loading.value = true
   error.value = ''
+  currentPage.value = 1
 
   try {
     const response = await api.get('/doctors')

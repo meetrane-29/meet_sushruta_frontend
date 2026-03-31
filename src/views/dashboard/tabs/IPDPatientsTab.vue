@@ -20,10 +20,21 @@
     <!-- New Admission Form -->
     <div v-if="showAdmissionForm" class="bg-green-50 border border-green-300 p-6 rounded-lg">
       <h2 class="text-xl font-bold text-gray-800 mb-4">🏥 Create New Admission</h2>
-      
+
+      <!-- Selected Patient Banner -->
+      <div v-if="selectedAppointment" class="bg-blue-100 border border-blue-300 rounded-lg p-3 mb-4 flex items-center gap-3">
+        <span class="text-blue-600 text-xl">👤</span>
+        <div>
+          <p class="font-semibold text-blue-800">
+            {{ selectedAppointment.patient?.user?.first_name }} {{ selectedAppointment.patient?.user?.last_name }}
+          </p>
+          <p class="text-sm text-blue-600">{{ selectedAppointment.reason || 'OPD Visit' }}</p>
+        </div>
+      </div>
+
       <form @submit.prevent="createAdmission" class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
-          <div>
+          <div v-if="!selectedAppointment">
             <label class="block text-sm font-semibold text-gray-700 mb-2">Patient ID</label>
             <input
               v-model="admissionForm.patientId"
@@ -253,7 +264,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import LoadingSpinner from '../../../components/shared/LoadingSpinner.vue'
 import ErrorMessage from '../../../components/shared/ErrorMessage.vue'
 import StatusBadge from '../../../components/shared/StatusBadge.vue'
@@ -270,6 +281,10 @@ export default {
     doctorId: {
       type: String,
       required: true
+    },
+    selectedAppointment: {
+      type: Object,
+      default: null
     }
   },
   setup(props) {
@@ -287,6 +302,15 @@ export default {
       ward: '',
       isEmergency: false
     })
+
+    // Auto-fill patient ID when appointment is selected
+    watch(() => props.selectedAppointment, (apt) => {
+      if (apt) {
+        const pid = apt.patient_id || apt.patient?.id
+        if (pid) admissionForm.value.patientId = pid
+        if (apt.reason) admissionForm.value.reason = apt.reason
+      }
+    }, { immediate: true })
 
     const progressNoteForm = ref({
       notes: ''

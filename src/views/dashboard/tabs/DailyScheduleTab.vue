@@ -44,7 +44,8 @@
               <div
                 v-for="appointment in dateGroup.appointments"
                 :key="appointment.id"
-                class="bg-gradient-to-r from-blue-50 to-transparent border border-blue-200 rounded-lg p-4 hover:shadow-md cursor-pointer transition-all"
+                @click="openPatient(appointment)"
+                class="bg-gradient-to-r from-blue-50 to-transparent border border-blue-200 rounded-lg p-4 hover:shadow-md hover:border-blue-400 cursor-pointer transition-all"
               >
                 <div class="flex justify-between items-start">
                   <div class="flex-1">
@@ -114,7 +115,8 @@ export default {
       required: true
     }
   },
-  setup(props) {
+  emits: ['select-patient'],
+  setup(props, { emit }) {
     const allAppointments = ref([])
     const loading = ref(false)
     const error = ref(null)
@@ -239,6 +241,10 @@ export default {
       fetchScheduleData()
     })
 
+    const openPatient = (appointment) => {
+      emit('select-patient', appointment)
+    }
+
     return {
       groupedAppointments,
       todayAppointments,
@@ -248,7 +254,8 @@ export default {
       walkInCount,
       operationCount,
       formatDateHeader,
-      fetchScheduleData
+      fetchScheduleData,
+      openPatient
     }
   }
 }

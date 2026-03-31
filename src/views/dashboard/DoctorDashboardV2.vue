@@ -78,16 +78,32 @@
       <!-- Tab Content -->
       <div>
         <!-- Daily Schedule Tab -->
-        <DailyScheduleTab v-if="activeTab === 'schedule'" :doctor-id="currentDoctorId" />
+        <DailyScheduleTab
+          v-if="activeTab === 'schedule'"
+          :doctor-id="currentDoctorId"
+          @select-patient="onSelectPatient"
+        />
 
         <!-- Patient Records Tab -->
-        <PatientRecordsTab v-if="activeTab === 'records'" :doctor-id="currentDoctorId" />
+        <PatientRecordsTab
+          v-if="activeTab === 'records'"
+          :doctor-id="currentDoctorId"
+          :selected-appointment="selectedAppointment"
+        />
 
         <!-- Current Patient Management Tab -->
-        <CurrentPatientManagementTab v-if="activeTab === 'management'" :doctor-id="currentDoctorId" />
+        <CurrentPatientManagementTab
+          v-if="activeTab === 'management'"
+          :doctor-id="currentDoctorId"
+          :selected-appointment="selectedAppointment"
+        />
 
         <!-- IPD Patients Tab -->
-        <IPDPatientsTab v-if="activeTab === 'ipd'" :doctor-id="currentDoctorId" />
+        <IPDPatientsTab
+          v-if="activeTab === 'ipd'"
+          :doctor-id="currentDoctorId"
+          :selected-appointment="selectedAppointment"
+        />
 
         <!-- Patient Ratings Tab -->
         <PatientRatingSystem v-if="activeTab === 'ratings'" />
@@ -117,6 +133,7 @@ export default {
     const activeTab = ref('schedule')
     const currentDoctor = ref(null)
     const currentDoctorId = ref(null)
+    const selectedAppointment = ref(null)
     const { get } = useApi()
     const loading = ref(false)
     const error = ref(null)
@@ -135,6 +152,11 @@ export default {
       }
     }
 
+    const onSelectPatient = (appointment) => {
+      selectedAppointment.value = appointment
+      activeTab.value = 'management'
+    }
+
     onMounted(() => {
       fetchCurrentDoctor()
     })
@@ -143,8 +165,10 @@ export default {
       activeTab,
       currentDoctor,
       currentDoctorId,
+      selectedAppointment,
       loading,
-      error
+      error,
+      onSelectPatient
     }
   }
 }

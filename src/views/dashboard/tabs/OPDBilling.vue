@@ -24,17 +24,26 @@
       <div v-if="activeBillingTab === 'generate'" class="space-y-4">
         <h3 class="text-lg font-bold text-gray-800 mb-4">Generate OPD Receipt</h3>
 
-        <div class="grid grid-cols-2 gap-4">
+        <!-- Patient Info (pre-filled from today's list) -->
+        <div v-if="billingForm.patientName" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-2">
+          <p class="text-xs text-blue-600 font-semibold uppercase mb-1">Selected Patient</p>
+          <p class="font-bold text-gray-800 text-lg">{{ billingForm.patientName }}</p>
+          <p class="text-sm text-gray-500" v-if="billingForm.doctorName">Doctor: {{ billingForm.doctorName }}</p>
+          <p class="text-sm text-gray-500" v-if="billingForm.appointmentTime">Time: {{ billingForm.appointmentTime }}</p>
+          <button @click="clearPatient" class="text-xs text-red-500 hover:text-red-700 mt-1">✕ Clear</button>
+        </div>
+
+        <div v-else class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Patient ID/Bill ID *</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Patient ID (UUID) *</label>
             <input
-              v-model="billingForm.billID"
+              v-model="billingForm.patientId"
               type="text"
-              placeholder="Enter bill ID"
+              placeholder="Patient UUID"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
+            <p class="text-xs text-gray-400 mt-1">Ya upar "Patients Today" se patient select karein</p>
           </div>
-
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Appointment ID</label>
             <input
@@ -44,7 +53,9 @@
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
+        </div>
 
+        <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Consultation Fee *</label>
             <input
@@ -123,7 +134,7 @@
 
         <button
           @click="generateReceipt"
-          :disabled="isLoading || !billingForm.billID || !billingForm.consultationFee"
+          :disabled="isLoading || (!billingForm.patientId && !billingForm.patientName) || !billingForm.consultationFee"
           class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
         >
           <span v-if="!isLoading">🧾 Generate Receipt</span>
@@ -285,9 +296,16 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useOPDApi } from '@/composables/useOPDApi'
 import { useApi } from '@/composables/useApi'
+
+const props = defineProps({
+  patientData: {
+    type: Object,
+    default: null
+  }
+})
 
 const activeBillingTab = ref('generate')
 const billingTabs = [
@@ -307,7 +325,10 @@ const opdApi = useOPDApi()
 const { api } = useApi()
 
 const billingForm = ref({
-  billID: '',
+  patientId: '',
+  patientName: '',
+  doctorName: '',
+  appointmentTime: '',
   appointmentID: '',
   consultationFee: 500,
   insuranceCovered: 0,
@@ -316,29 +337,69 @@ const billingForm = ref({
   notes: ''
 })
 
+// Watch for patient selected from today's modal
+watch(() => props.patientData, (data) => {
+  if (data) {
+    billingForm.value.patientId = data.patientId || ''
+    billingForm.value.patientName = data.patientName || ''
+    billingForm.value.doctorName = data.doctorName || ''
+    billingForm.value.appointmentTime = data.appointmentTime || ''
+    billingForm.value.appointmentID = data.appointmentId || ''
+    activeBillingTab.value = 'generate'
+    generatedReceipt.value = null
+    successMessage.value = ''
+    errorMessage.value = ''
+  }
+}, { immediate: true })
+
 const generateReceipt = async () => {
   try {
     isLoading.value = true
     errorMessage.value = ''
     successMessage.value = ''
 
-    const receiptData = {
-      bill_id: billingForm.value.billID,
-      appointment_id: billingForm.value.appointmentID || null,
+    const patientId = billingForm.value.patientId
+    if (!patientId) {
+      errorMessage.value = 'Patient ID required. Upar "Patients Today" se patient select karein.'
+      return
+    }
+
+    // Step 1: Create Bill in database
+    const billRes = await api.post('/billing/generate', {
+      patient_id: patientId,
+      appointment_id: billingForm.value.appointmentID || undefined,
+      items: [{
+        item_type: 'consultation',
+        description: 'OPD Consultation',
+        amount: billingForm.value.consultationFee,
+        quantity: 1
+      }]
+    })
+
+    const bill = billRes.data?.data?.bill
+    if (!bill?.id) {
+      errorMessage.value = 'Bill create karne mein error aaya'
+      return
+    }
+
+    // Step 2: Generate OPD Receipt linked to the bill
+    const result = await opdApi.generateOPDReceipt({
+      bill_id: bill.id,
+      appointment_id: billingForm.value.appointmentID || undefined,
       consultation_fee: billingForm.value.consultationFee,
-      insurance_covered: billingForm.value.insuranceCovered,
+      insurance_covered: billingForm.value.insuranceCovered || 0,
       payment_method: billingForm.value.paymentMethod,
       transaction_ref: billingForm.value.transactionRef,
       notes: billingForm.value.notes
-    }
+    })
 
-    const result = await opdApi.generateOPDReceipt(receiptData)
     if (result && result.data) {
-      generatedReceipt.value = result.data
-      successMessage.value = 'Receipt generated successfully'
+      generatedReceipt.value = result.data?.data || result.data
+      successMessage.value = 'Receipt generate ho gayi aur database mein save ho gayi!'
     }
   } catch (error) {
-    errorMessage.value = error.message || 'Error generating receipt'
+    console.error('Receipt generate error:', error)
+    errorMessage.value = error.response?.data?.message || error.message || 'Receipt generate karne mein error'
   } finally {
     isLoading.value = false
   }
@@ -392,7 +453,10 @@ const downloadReceipt = async () => {
 
 const resetBilling = () => {
   billingForm.value = {
-    billID: '',
+    patientId: '',
+    patientName: '',
+    doctorName: '',
+    appointmentTime: '',
     appointmentID: '',
     consultationFee: 500,
     insuranceCovered: 0,
@@ -401,6 +465,16 @@ const resetBilling = () => {
     notes: ''
   }
   generatedReceipt.value = null
+  successMessage.value = ''
+  errorMessage.value = ''
+}
+
+const clearPatient = () => {
+  billingForm.value.patientId = ''
+  billingForm.value.patientName = ''
+  billingForm.value.doctorName = ''
+  billingForm.value.appointmentTime = ''
+  billingForm.value.appointmentID = ''
 }
 </script>
 

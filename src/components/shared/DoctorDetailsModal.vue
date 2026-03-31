@@ -155,10 +155,10 @@
             <div class="border-t border-gray-200 pt-4 mt-4">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Employment & Attendance</h3>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Joining Date (Unix timestamp)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Joining Date</label>
                 <input
-                  v-model.number="editForm.joining_date"
-                  type="number"
+                  v-model="editForm.joining_date"
+                  type="date"
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -285,7 +285,12 @@ const editForm = ref({
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'Not set'
-  const date = new Date(Number(timestamp))
+  let ts = Number(timestamp)
+  if (Number.isNaN(ts) || ts <= 0) return 'Not set'
+  // joining_date is stored in seconds, created_at is in milliseconds
+  // If ts < 1e10, it's in seconds — convert to ms
+  if (ts < 1e10) ts = ts * 1000
+  const date = new Date(ts)
   if (Number.isNaN(date.getTime())) return 'Not set'
   return date.toLocaleDateString('en-IN', {
     year: 'numeric',
@@ -310,6 +315,11 @@ const closeModal = () => {
   emit('close')
 }
 
+const toDateInputValue = (seconds) => {
+  if (!seconds || seconds <= 0) return ''
+  return new Date(Number(seconds) * 1000).toISOString().split('T')[0]
+}
+
 const toggleEditMode = () => {
   if (!isEditMode.value) {
     editForm.value = {
@@ -317,7 +327,7 @@ const toggleEditMode = () => {
       department: props.doctor.department || '',
       consultation_fee: props.doctor.consultation_fee || 0,
       bio: props.doctor.bio || '',
-      joining_date: props.doctor.joining_date || 0,
+      joining_date: toDateInputValue(props.doctor.joining_date),
       salary: props.doctor.salary || 0,
       attendance_percentage: props.doctor.attendance_percentage || 0,
       leave_balance: props.doctor.leave_balance || 0
@@ -337,7 +347,13 @@ const saveChanges = async () => {
   error.value = ''
 
   try {
-    const response = await api.patch(`/doctors/${props.doctor.id}`, editForm.value)
+    const payload = {
+      ...editForm.value,
+      joining_date: editForm.value.joining_date
+        ? Math.floor(new Date(editForm.value.joining_date).getTime() / 1000)
+        : 0
+    }
+    const response = await api.patch(`/doctors/${props.doctor.id}`, payload)
     emit('updated', response.data.data || response.data)
     isEditMode.value = false
     closeModal()

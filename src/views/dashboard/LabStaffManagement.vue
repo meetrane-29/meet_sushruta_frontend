@@ -6,13 +6,21 @@
         <h1 class="text-3xl font-bold text-gray-900">Lab Staff Management</h1>
         <p class="text-gray-600 mt-1">View and manage all lab staff in the system</p>
       </div>
-      <button
-        @click="refreshData"
-        :disabled="loading"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {{ loading ? 'Loading...' : 'Refresh' }}
-      </button>
+      <div class="flex gap-2">
+        <button
+          @click="showRegisterModal = true"
+          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+        >
+          + Register Staff
+        </button>
+        <button
+          @click="refreshData"
+          :disabled="loading"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ loading ? 'Loading...' : 'Refresh' }}
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -82,6 +90,7 @@
         <p class="text-lg">No lab staff found</p>
       </div>
     </div>
+
     <!-- Stats -->
     <div v-if="!loading && !error && staff.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
       <div class="bg-white rounded-lg border border-gray-200 p-6">
@@ -94,18 +103,96 @@
       </div>
     </div>
 
+    <!-- Register Staff Modal -->
+    <div v-if="showRegisterModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg shadow-lg max-w-md w-full">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-8 py-4 text-white rounded-t-lg">
+          <h2 class="text-2xl font-bold">Register Lab Staff</h2>
+          <p class="text-teal-100 text-sm mt-1">Add a new lab staff member</p>
+        </div>
+
+        <!-- Form -->
+        <form @submit.prevent="registerStaff" class="space-y-4 px-8 py-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+            <input
+              v-model="registerForm.name"
+              type="text"
+              placeholder="Enter full name"
+              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              :class="formErrors.name ? 'border-red-400' : 'border-gray-300'"
+            />
+            <p v-if="formErrors.name" class="text-red-500 text-xs mt-1">{{ formErrors.name }}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <input
+              v-model="registerForm.email"
+              type="email"
+              placeholder="staff@hospital.com"
+              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              :class="formErrors.email ? 'border-red-400' : 'border-gray-300'"
+            />
+            <p v-if="formErrors.email" class="text-red-500 text-xs mt-1">{{ formErrors.email }}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+            <input
+              v-model="registerForm.password"
+              type="password"
+              placeholder="Minimum 8 characters"
+              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              :class="formErrors.password ? 'border-red-400' : 'border-gray-300'"
+            />
+            <p v-if="formErrors.password" class="text-red-500 text-xs mt-1">{{ formErrors.password }}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+            <input
+              v-model="registerForm.phone"
+              type="tel"
+              placeholder="10-digit mobile number"
+              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              :class="formErrors.phone ? 'border-red-400' : 'border-gray-300'"
+            />
+            <p v-if="formErrors.phone" class="text-red-500 text-xs mt-1">{{ formErrors.phone }}</p>
+          </div>
+
+          <!-- API Error -->
+          <ErrorMessage v-if="registerError" :message="registerError" />
+
+          <!-- Buttons -->
+          <div class="flex gap-3 pt-2 border-t border-gray-200">
+            <button
+              type="button"
+              @click="closeRegisterModal"
+              class="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              :disabled="registering"
+              class="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ registering ? 'Registering...' : 'Register' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Staff Details Modal -->
     <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
         <div class="p-6 border-b border-gray-200 sticky top-0 bg-white">
           <div class="flex items-center justify-between">
             <h2 class="text-2xl font-bold text-gray-900">Staff Details</h2>
-            <button
-              @click="closeModal"
-              class="text-gray-600 hover:text-gray-900 text-2xl leading-none"
-            >
-              ×
-            </button>
+            <button @click="closeModal" class="text-gray-600 hover:text-gray-900 text-2xl leading-none">×</button>
           </div>
         </div>
 
@@ -134,10 +221,10 @@
             <h4 class="font-semibold text-gray-900 mb-4">Employment & Attendance</h4>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="text-sm text-gray-600">Joining Date (timestamp)</label>
+                <label class="text-sm text-gray-600">Joining Date</label>
                 <input
-                  v-model.number="editForm.joining_date"
-                  type="number"
+                  v-model="editForm.joining_date"
+                  type="date"
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -206,15 +293,25 @@ const error = ref('')
 const searchQuery = ref('')
 const showModal = ref(false)
 const selectedStaff = ref(null)
+const showRegisterModal = ref(false)
+const registering = ref(false)
+const registerError = ref('')
+const formErrors = ref({})
+
+const registerForm = ref({
+  name: '',
+  email: '',
+  password: '',
+  phone: ''
+})
 
 const editForm = ref({
-  joining_date: 0,
+  joining_date: '',
   salary: 0,
   attendance_percentage: 0,
   leave_balance: 0
 })
 
-// Filter staff by name or email
 const filteredStaff = computed(() => {
   return staff.value.filter(member => {
     const fullName = `${member.first_name || ''} ${member.last_name || ''}`.toLowerCase()
@@ -224,62 +321,104 @@ const filteredStaff = computed(() => {
   })
 })
 
-// Count active staff
 const activeStaff = computed(() => {
   return staff.value.filter(s => s.active).length
 })
 
-// Fetch all lab staff
 const fetchLabStaff = async () => {
   loading.value = true
   error.value = ''
-
   try {
-    // Call API to get lab staff
     const response = await api.get('/users?role=lab')
-    
-    // Extract staff array from response
     const data = response.data?.data || []
     staff.value = Array.isArray(data) ? data : []
   } catch (err) {
-    error.value = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to load lab staff. Please try again.'
-    console.error('Error fetching lab staff:', {
-      status: err.response?.status,
-      message: err.response?.data?.message,
-      error: err.response?.data?.error,
-      fullError: err
-    })
+    error.value = err.response?.data?.message || err.message || 'Failed to load lab staff.'
   } finally {
     loading.value = false
   }
 }
 
-// Refresh data
-const refreshData = () => {
-  fetchLabStaff()
+const refreshData = () => fetchLabStaff()
+
+const validateForm = () => {
+  formErrors.value = {}
+
+  const nameParts = registerForm.value.name.trim().split(/\s+/)
+  if (!registerForm.value.name.trim()) {
+    formErrors.value.name = 'Full name is required'
+  } else if (nameParts[0].length < 2) {
+    formErrors.value.name = 'First name must be at least 2 characters'
+  } else if (nameParts.length < 2 || nameParts[1].length < 2) {
+    formErrors.value.name = 'Please enter both first and last name'
+  }
+
+  if (!registerForm.value.email.trim()) {
+    formErrors.value.email = 'Email is required'
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.value.email)) {
+    formErrors.value.email = 'Invalid email format'
+  }
+
+  if (!registerForm.value.password) {
+    formErrors.value.password = 'Password is required'
+  } else if (registerForm.value.password.length < 8) {
+    formErrors.value.password = 'Password must be at least 8 characters'
+  }
+
+  if (!registerForm.value.phone.trim()) {
+    formErrors.value.phone = 'Phone number is required'
+  } else if (registerForm.value.phone.trim().length < 10) {
+    formErrors.value.phone = 'Phone must be at least 10 digits'
+  }
+
+  return Object.keys(formErrors.value).length === 0
 }
 
-// Delete staff member
-const deleteStaff = async (staffId) => {
-  if (!confirm('Are you sure you want to delete this staff member?')) {
-    return
-  }
+const registerStaff = async () => {
+  if (!validateForm()) return
+
+  registerError.value = ''
+  registering.value = true
 
   try {
-    await api.delete(`/users/${staffId}`)
-    staff.value = staff.value.filter(s => s.id !== staffId)
-    error.value = ''
+    const nameParts = registerForm.value.name.trim().split(/\s+/)
+    const firstName = nameParts[0]
+    const lastName = nameParts.slice(1).join(' ')
+
+    await api.post('/admin-register', {
+      first_name: firstName,
+      last_name: lastName,
+      email: registerForm.value.email.trim().toLowerCase(),
+      password: registerForm.value.password,
+      phone: registerForm.value.phone.trim(),
+      role: 'lab'
+    })
+
+    closeRegisterModal()
+    await fetchLabStaff()
   } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to delete staff'
-    console.error('Delete error:', err)
+    registerError.value =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      err.message ||
+      'Failed to register staff. Please try again.'
+  } finally {
+    registering.value = false
   }
 }
 
-// View staff details
+const closeRegisterModal = () => {
+  showRegisterModal.value = false
+  registerForm.value = { name: '', email: '', password: '', phone: '' }
+  formErrors.value = {}
+  registerError.value = ''
+}
+
 const viewStaffDetails = (member) => {
   selectedStaff.value = member
+  const jd = member.joining_date
   editForm.value = {
-    joining_date: member.joining_date || 0,
+    joining_date: (jd && jd > 0) ? new Date(jd < 1e10 ? jd * 1000 : jd).toISOString().split('T')[0] : '',
     salary: member.salary || 0,
     attendance_percentage: member.attendance_percentage || 0,
     leave_balance: member.leave_balance || 0
@@ -287,32 +426,42 @@ const viewStaffDetails = (member) => {
   showModal.value = true
 }
 
-// Close modal
 const closeModal = () => {
   showModal.value = false
   selectedStaff.value = null
 }
 
-// Update staff information
 const updateStaff = async () => {
   if (!selectedStaff.value) return
-
   try {
-    const response = await api.patch(`/users/${selectedStaff.value.id}`, editForm.value)
+    const payload = {
+      ...editForm.value,
+      joining_date: editForm.value.joining_date
+        ? Math.floor(new Date(editForm.value.joining_date).getTime() / 1000)
+        : 0
+    }
+    const response = await api.patch(`/users/${selectedStaff.value.id}`, payload)
     const index = staff.value.findIndex(s => s.id === selectedStaff.value.id)
     if (index !== -1) {
-      staff.value[index] = response.data?.data || response.data
+      staff.value[index] = { ...staff.value[index], ...(response.data?.data || response.data) }
     }
     closeModal()
     error.value = ''
   } catch (err) {
     error.value = err.response?.data?.message || 'Failed to update staff'
-    console.error('Update error:', err)
   }
 }
 
-// Load staff on component mount
-onMounted(() => {
-  fetchLabStaff()
-})
+const deleteStaff = async (staffId) => {
+  if (!confirm('Are you sure you want to delete this staff member?')) return
+  try {
+    await api.delete(`/users/${staffId}`)
+    staff.value = staff.value.filter(s => s.id !== staffId)
+    error.value = ''
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Failed to delete staff'
+  }
+}
+
+onMounted(() => fetchLabStaff())
 </script>

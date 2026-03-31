@@ -198,12 +198,9 @@ const searchPatients = async () => {
     searchResults.value = []
     searchTried.value = true
 
-    // This should use your patient API with search functionality
-    // For now, we'll use getAllPatients and filter
-    const result = await patientApi.getAllPatients()
-    
-    if (result && result.data && result.data.patients) {
-      searchResults.value = filterPatients(result.data.patients)
+    const result = await patientApi.fetchPatients(1, 100, searchQuery.value)
+    if (result && result.patients) {
+      searchResults.value = result.patients
     }
   } catch (error) {
     errorMessage.value = 'Error searching patients'
@@ -243,13 +240,13 @@ const selectPatient = async (patient) => {
     // Get UHID for this patient
     const uhidResult = await opdApi.getUHIDByPatient(patient.id)
     if (uhidResult && uhidResult.data) {
-      patientUHID.value = uhidResult.data.uhid
+      patientUHID.value = uhidResult.data.data?.uhid || uhidResult.data.uhid || ''
     }
 
     // Get insurance policies
     const insuranceResult = await opdApi.getPatientInsurancePolicies(patient.id)
     if (insuranceResult && insuranceResult.data) {
-      insurancePolicies.value = insuranceResult.data
+      insurancePolicies.value = insuranceResult.data.data || insuranceResult.data || []
     }
   } catch (error) {
     console.error('Error fetching patient details:', error)
@@ -263,13 +260,49 @@ const clearSearch = () => {
 }
 
 const bookAppointment = () => {
-  // This would navigate or emit event to appointment booking tab
-  console.log('Book appointment for patient:', selectedPatient.value)
+  if (!selectedPatient.value) return
+  
+  // Store selected patient data in a global state or pass via emit
+  // Emit event to parent to navigate to appointments tab with selected patient
+  const appointmentData = {
+    patientId: selectedPatient.value.id,
+    patientName: `${selectedPatient.value.user?.first_name} ${selectedPatient.value.user?.last_name}`,
+    patientPhone: selectedPatient.value.user?.phone,
+    patientEmail: selectedPatient.value.user?.email,
+    patientUHID: patientUHID.value
+  }
+  
+  // Store in sessionStorage to pass data between tabs
+  sessionStorage.setItem('selectedPatient', JSON.stringify(appointmentData))
+  
+  // Emit custom event to parent component
+  const event = new CustomEvent('switchTab', { detail: { tab: 'appointments' } })
+  window.dispatchEvent(event)
+  
+  console.log('Navigating to book appointment for:', appointmentData)
 }
 
 const proceedToBilling = () => {
-  // This would navigate to billing tab
-  console.log('Proceed to billing for patient:', selectedPatient.value)
+  if (!selectedPatient.value) return
+  
+  // Store selected patient data for billing tab
+  const billingData = {
+    patientId: selectedPatient.value.id,
+    patientName: `${selectedPatient.value.user?.first_name} ${selectedPatient.value.user?.last_name}`,
+    patientPhone: selectedPatient.value.user?.phone,
+    patientEmail: selectedPatient.value.user?.email,
+    patientUHID: patientUHID.value,
+    insurancePolicies: insurancePolicies.value
+  }
+  
+  // Store in sessionStorage to pass data between tabs
+  sessionStorage.setItem('selectedPatient', JSON.stringify(billingData))
+  
+  // Emit custom event to parent component
+  const event = new CustomEvent('switchTab', { detail: { tab: 'billing' } })
+  window.dispatchEvent(event)
+  
+  console.log('Navigating to billing for:', billingData)
 }
 </script>
 

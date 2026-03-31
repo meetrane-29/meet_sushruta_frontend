@@ -234,6 +234,26 @@
               </button>
             </div>
           </div>
+          
+          <!-- Send to Pharmacy/Lab Actions -->
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              @click="openSendToPharmacyModal"
+              :disabled="sendingToPharmacy"
+              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <span v-if="!sendingToPharmacy">💊 Send to Pharmacy</span>
+              <span v-else>⏳ Sending...</span>
+            </button>
+            <button
+              @click="openSendToLabModal"
+              :disabled="sendingToLab"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <span v-if="!sendingToLab">🧪 Send to Lab</span>
+              <span v-else>⏳ Sending...</span>
+            </button>
+          </div>
         </div>
 
         <!-- Add New Medicine -->
@@ -330,6 +350,101 @@
           <p class="text-xs text-gray-500 mt-3 text-center">This will save all notes and prescriptions</p>
         </div>
       </div>
+
+      <!-- Send to Pharmacy Modal -->
+      <div v-if="showPharmacyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Send to Pharmacy</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-900 mb-2">Priority</label>
+              <select v-model="pharmacyPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <option value="normal">Normal</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-6 flex gap-3">
+            <button
+              @click="showPharmacyModal = false"
+              class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              @click="sendPrescriptionToPharmacy"
+              :disabled="sendingToPharmacy"
+              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50"
+            >
+              {{ sendingToPharmacy ? 'Sending...' : 'Send' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Send to Lab Modal -->
+      <div v-if="showLabModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Send to Lab</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-900 mb-2">Test Type <span class="text-red-500">*</span></label>
+              <input 
+                v-model="labTestType"
+                type="text"
+                placeholder="e.g., BloodWork, Xray"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-900 mb-2">Test Name <span class="text-red-500">*</span></label>
+              <input 
+                v-model="labTestName"
+                type="text"
+                placeholder="e.g., CBC, Chest X-ray"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-900 mb-2">Scheduled Date</label>
+              <input 
+                v-model="labScheduledDate"
+                type="date"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-900 mb-2">Priority</label>
+              <select v-model="labPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <option value="normal">Normal</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-6 flex gap-3">
+            <button
+              @click="showLabModal = false"
+              class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              @click="sendToLab"
+              :disabled="sendingToLab"
+              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+            >
+              {{ sendingToLab ? 'Sending...' : 'Send' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -338,6 +453,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { useAuthStore } from '@/stores/authStore'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
@@ -345,6 +461,7 @@ import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 const route = useRoute()
 const router = useRouter()
 const api = useApi()
+const authStore = useAuthStore()
 
 const appointment = ref({})
 const vitals = ref(null)
@@ -358,6 +475,15 @@ const updatingStatus = ref(false)
 const showVitalsForm = ref(false)
 const availableMedicines = ref([])
 const appointmentStatus = ref('pending')
+const sendingToPharmacy = ref(false)
+const sendingToLab = ref(false)
+const showPharmacyModal = ref(false)
+const showLabModal = ref(false)
+const pharmacyPriority = ref('normal')
+const labTestType = ref('')
+const labTestName = ref('')
+const labScheduledDate = ref('')
+const labPriority = ref('normal')
 
 const vitalsForm = ref({
   temperature: null,
@@ -561,7 +687,7 @@ const submitConsultation = async () => {
     for (const prescription of prescriptions.value) {
       const prescriptionData = {
         appointment_id: appointmentId.value,
-        doctor_id: appointment.value.doctor_id,
+        doctor_id: authStore.user?.id,
         patient_id: appointment.value.patient_id,
         items: [
           {
@@ -591,6 +717,95 @@ const submitConsultation = async () => {
     alert('Failed to save consultation: ' + (err.response?.data?.error || err.message))
   } finally {
     isSubmitting.value = false
+  }
+}
+
+const openSendToPharmacyModal = () => {
+  showPharmacyModal.value = true
+}
+
+const openSendToLabModal = () => {
+  showLabModal.value = true
+}
+
+const sendPrescriptionToPharmacy = async () => {
+  if (prescriptions.value.length === 0) {
+    alert('Please add at least one medicine to the prescription')
+    return
+  }
+
+  sendingToPharmacy.value = true
+  try {
+    // First create the prescriptions
+    for (const prescription of prescriptions.value) {
+      const prescriptionData = {
+        appointment_id: appointmentId.value,
+        doctor_id: authStore.user?.id,
+        patient_id: appointment.value.patient_id,
+        items: [
+          {
+            medicine_name: prescription.medicine_name,
+            dosage: prescription.dosage,
+            frequency: prescription.frequency,
+            duration: prescription.duration
+          }
+        ],
+        notes: consultationNotes.value
+      }
+
+      const prescRes = await api.post('/prescriptions', prescriptionData)
+      const prescriptionId = prescRes.data?.data?.id
+
+      if (prescriptionId) {
+        // Now send to pharmacy
+        await api.post(`/prescriptions/${prescriptionId}/send-to-pharmacy`, {
+          priority: pharmacyPriority.value || 'normal',
+          notes: consultationNotes.value
+        })
+      }
+    }
+
+    alert('✓ Prescription(s) sent to pharmacy successfully!')
+    showPharmacyModal.value = false
+    pharmacyPriority.value = 'normal'
+  } catch (err) {
+    console.error('[ConsultationView] Error sending to pharmacy:', err)
+    alert('Failed to send to pharmacy: ' + (err.response?.data?.error || err.message))
+  } finally {
+    sendingToPharmacy.value = false
+  }
+}
+
+const sendToLab = async () => {
+  if (!labTestType.value || !labTestName.value) {
+    alert('Please fill all required lab fields')
+    return
+  }
+
+  sendingToLab.value = true
+  try {
+    // Send to lab (lab request)
+    await api.post(`/prescriptions/${appointmentId.value}/send-to-lab`, {
+      patient_id: appointment.value.patient_id,
+      doctor_id: authStore.user?.id,
+      test_type: labTestType.value,
+      test_name: labTestName.value,
+      scheduled_date: labScheduledDate.value || null,
+      priority: labPriority.value || 'normal',
+      notes: consultationNotes.value
+    })
+
+    alert('✓ Lab request sent successfully!')
+    showLabModal.value = false
+    labTestType.value = ''
+    labTestName.value = ''
+    labScheduledDate.value = ''
+    labPriority.value = 'normal'
+  } catch (err) {
+    console.error('[ConsultationView] Error sending to lab:', err)
+    alert('Failed to send to lab: ' + (err.response?.data?.error || err.message))
+  } finally {
+    sendingToLab.value = false
   }
 }
 
